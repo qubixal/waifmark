@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local LLM Benchmark</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap');
+
+      :root {
+        --bg: #0F0F1A;
+        --p1: #CF8AB8;
+        --p2: #D158B4;
+        --p3: #F15CCA;
+        --s1: #3A3231;
+        --s2: #3A3A3D;
+        --s3: #474C60;
+        --s4: rgba(71, 67, 114, 0.8);
+        --font: 'Zen Maru Gothic', 'Tsukimi Rounded', 'Rounded Mplus 1c', sans-serif;
+      }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        background: var(--bg);
+        color: #e0e0e0;
+        font-family: var(--font);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .chart-wrapper {
+        width: 100%;
+        max-width: 1100px;
+        position: relative;
+        border-radius: 10px;
+        padding: 30px 28px 20px;
+        border: 0px solid rgba(207, 138, 184, 0.15);
+        box-shadow:
+          0 0 80px rgba(209, 88, 180, 0.06),
+          0 4px 40px rgba(0,0,0,0.5),
+          inset 0 1px 0 rgba(255,255,255,0.04);
+      }
+
+      .chart-wrapper::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 16px;
+        padding: 1px;
+        background: linear-gradient(160deg, rgba(207,138,184,0.25), rgba(241,92,202,0.05));
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
+      }
+
+      h1 {
+        text-align: left;
+        font-family: var(--font);
+        font-size: 30px;
+        font-weight: 900;
+        letter-spacing: 0.5px;
+        background: linear-gradient(90deg, var(--p1) 0%, var(--p2) 70%, var(--p3) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 4px;
+      }
+
+      .subtitle {
+        text-align: left;
+        font-size: 15px;
+        font-weight: 500;
+        color: rgba(207, 138, 184, 0.45);
+        margin-bottom: 5px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+      }
+
+      .canvas-container {
+        position: relative;
+        width: 100%;
+        height: 60vh;
+      }
+
+      .legend-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 18px;
+        margin-top: 5px;
+        margin-bottom: 20px;
+        padding-top: 14px;
+        border-top: 3px solid rgba(207, 138, 184, 0.1);
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 14px;
+        font-weight: 500;
+        color: rgba(255,255,255,0.55);
+        cursor: pointer;
+        padding: 5px 12px;
+        border-radius: 20px;
+        border: 1px solid transparent;
+        transition: all 0.3s ease;
+        user-select: none;
+      }
+
+      .legend-item:hover {
+        background: rgba(207, 138, 184, 0.08);
+        border-color: rgba(207, 138, 184, 0.15);
+      }
+
+      .legend-item.active {
+        background: rgba(207, 138, 184, 0.12);
+        border-color: rgba(207, 138, 184, 0.3);
+        color: rgba(255,255,255,0.85);
+      }
+
+      .legend-item.dimmed {
+        opacity: 0.35;
+      }
+
+      .legend-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        box-shadow: 0 0 6px currentColor;
+        transition: all 0.3s ease;
+      }
+
+      .legend-item.dimmed .legend-dot {
+        box-shadow: none;
+      }
+
+      .hint {
+        text-align: center;
+        font-size: 11px;
+        color: rgba(207, 138, 184, 0.25);
+        margin-top: -4px;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+        transition: opacity 0.3s ease;
+      }
+    </style>
+  </head>
+  <body>
+
+    <div class="chart-wrapper">
+      <h1>Waifmark 1 for Small (V)LLMs</h1>
+      <div class="subtitle">Score vs Latency</div>
+      <div class="canvas-container">
+        <canvas id="benchmarkChart"></canvas>
+      </div>
+      <div class="legend-container" id="customLegend"></div>
+      <!-- <div class="hint" id="hint"></div> */ -->
+    </div>
+
+    <script>
+      //YES THIS IS HARD CODED DATA
+      //JUST SIMPLER TO MANAGE FOR NOW....
+    const rawData = [
+      { model: "Qwen3.5 9B Q4",         org: "QWEN", score: 86.33, time: 9.717 },
+      { model: "Qwen3-2507-4BI Q4",     org: "QWEN", score: 78.50, time: 2.485 },
+      { model: "Qwen3-2507-4BI Q8",     org: "QWEN", score: 64.33, time: 3.903 },
+      { model: "Qwen3-vl-4B Q4",        org: "QWEN", score: 42.00, time: 2.102 },
+      { model: "Qwen3-vl-8B Q8",        org: "QWEN", score: 66.83, time: 4.558 },
+      { model: "Gemma4-e4b Q8",         org: "GOOG", score: 68.83, time: 20.189 },
+      { model: "Gemma4-e4b Q4",         org: "GOOG", score: 54.50, time: 14.076 },
+      { model: "Gemma4-e2b Q8",         org: "GOOG", score: 53.83, time: 13.612 },
+      { model: "Gemma3n-a4bI Q4",       org: "GOOG", score: 46.67, time: 3.290 },
+      { model: "r1-0528qwen8b Q8",      org: "DPSK", score: 61.17, time: 41.420 },
+      { model: "r1-0528qwen8b Q4",      org: "DPSK", score: 38.33, time: 57.988 },
+      { model: "Ministral 3 14B Q4",    org: "MIST", score: 47.00, time: 20.619 },
+      { model: "4.6VFlash 9B Q4",       org: "GLM",  score: 44.17, time: 31.179 },
+      { model: "RNJ-1 8B Q8",           org: "ESSE", score: 37.00, time: 6.363 },
+      { model: "RNJ-1 8B Q4",           org: "ESSE", score: 36.67, time: 5.071 },
+      { model: "Nemotron3nano Q8",      org: "NVDA", score: 18.00, time: 13.192 },
+    ];
+
+    const orgMeta = {
+      QWEN: { color: "#F15CCA", label: "Qwen (Alibaba)" },
+      GOOG: { color: "#6BCB77", label: "Google (Gemma)" },
+      DPSK: { color: "#3B45FF", label: "DeepSeek" },
+      MIST: { color: "#EC7A55", label: "Mistral" },
+      GLM:  { color: "#227DFF", label: "GLM (Zhipu)" },
+      ESSE: { color: "#FECB33", label: "Essense (RNJ)" },
+      NVDA: { color: "#83BF0D", label: "NVIDIA" },
+    };
+
+    // greyed out styles
+    const GRAY_POINT  = '#474C60';
+    const GRAY_LINE   = 'rgba(58,58,61,0.35)';
+    const GRAY_LABEL  = 'rgba(71,67,114,0.45)';
+
+    let selectedOrg = null;
+
+    // grouping by ai organisation lab
+    const orgGroups = {};
+    rawData.forEach(d => {
+      if (!orgGroups[d.org]) orgGroups[d.org] = [];
+      orgGroups[d.org].push(d);
+    });
+    Object.values(orgGroups).forEach(arr => arr.sort((a, b) => a.score - b.score));
+
+    const datasets = [];
+    const datasetOrgMap = [];
+
+    Object.entries(orgGroups).forEach(([org, models]) => {
+      const meta = orgMeta[org];
+
+      if (models.length > 1) {
+        datasets.push({
+          label: `_line_${org}`,
+          data: models.map(m => ({ x: m.score, y: m.time })),
+          borderColor: meta.color + "88",
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          showLine: true,
+          fill: false,
+          tension: 0,
+          order: 2,
+          _org: org,
+          _origBorderColor: meta.color + "88",
+        });
+        datasetOrgMap.push(org);
+      }
+
+      datasets.push({
+        label: meta.label,
+        data: models.map(m => ({ x: m.score, y: m.time, modelName: m.model })),
+        backgroundColor: meta.color,
+        borderColor: meta.color,
+        pointRadius: 7,
+        pointHoverRadius: 10,
+        pointBorderWidth: 2,
+        pointBorderColor: meta.color + '44',
+        showLine: false,
+        order: 1,
+        _org: org,
+        _origColor: meta.color,
+        _origBorderColor: meta.color + '44',
+      });
+      datasetOrgMap.push(org);
+    });
+
+    function applyFilter(chart) {
+      chart.data.datasets.forEach(ds => {
+        const org = ds._org;
+        const isLine = ds.label.startsWith('_line_');
+        const isActive = !selectedOrg || org === selectedOrg;
+
+        if (isLine) {
+          ds.borderColor = isActive ? ds._origBorderColor : GRAY_LINE;
+          ds.borderWidth = isActive ? 2 : 1;
+        } else {
+          ds.backgroundColor = isActive ? ds._origColor : GRAY_POINT;
+          ds.borderColor     = isActive ? ds._origColor : GRAY_POINT;
+          ds.pointBorderColor= isActive ? ds._origColor + '44' : 'transparent';
+          ds.pointRadius     = isActive ? 7 : 5;
+        }
+      });
+      chart.update('none');
+    }
+
+    // labelling data + glowing plugin
+    const labelPlugin = {
+      id: 'pointLabels',
+      afterDraw(chart) {
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '500 13px "Zen Maru Gothic", sans-serif';
+
+        const labels = [];
+
+        // 1: draw glows and collect label metadata
+        chart.data.datasets.forEach((ds) => {
+          if (ds.label.startsWith('_line_')) return;
+          const dsIdx = chart.data.datasets.indexOf(ds);
+          const meta  = chart.getDatasetMeta(dsIdx);
+          const isActive = !selectedOrg || ds._org === selectedOrg;
+          const chartMidY = (chart.chartArea.top + chart.chartArea.bottom) / 2;
+
+          meta.data.forEach((pt, i) => {
+            const item = ds.data[i];
+            if (!item.modelName) return;
+
+            if (isActive) {
+              ctx.beginPath();
+              const grd = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, 16);
+              grd.addColorStop(0, ds._origColor + '40');
+              grd.addColorStop(1, ds._origColor + '00');
+              ctx.fillStyle = grd;
+              ctx.arc(pt.x, pt.y, 16, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            const tw = ctx.measureText(item.modelName).width;
+            const th = 14;
+            const above = pt.y < chartMidY;
+
+            labels.push({
+              text:        item.modelName,
+              ptX:         pt.x,
+              ptY:         pt.y,
+              x:           pt.x + 11,
+              y:           above ? pt.y + 6 : pt.y - 6 - th,
+              w:           tw,
+              h:           th,
+              color:       isActive ? ds._origColor + 'cc' : GRAY_LABEL,
+              leaderColor: isActive ? ds._origColor + '66' : 'rgba(71,67,114,0.25)',
+            });
+          });
+        });
+
+        // 2: pick the best position on a circle around each point.
+        // candidate label positions tried in order
+        const CANDIDATES = [
+          { angle:   0, align: 'left',   baseline: 'middle', pref: 0 },  // right
+          { angle:  45, align: 'left',   baseline: 'bottom', pref: 1 },  // upper-right
+          { angle: 315, align: 'left',   baseline: 'top',    pref: 1 },  // lower-right
+          { angle:  90, align: 'center', baseline: 'bottom', pref: 2 },  // above
+          { angle: 270, align: 'center', baseline: 'top',    pref: 2 },  // below
+          { angle: 135, align: 'right',  baseline: 'bottom', pref: 3 },  // upper-left
+          { angle: 225, align: 'right',  baseline: 'top',    pref: 3 },  // lower-left
+          { angle: 180, align: 'right',  baseline: 'middle', pref: 4 },  // left
+        ];
+        const RADIUS   = 14; // px from point center to label 
+        // i should probably make these adjust on page...
+        const PAD      = 5;  // extra spacing between label boxes
+        const PREF_WT  = 150;
+
+        const pointObstacles = labels.map(l => ({ x: l.ptX, y: l.ptY, r: 10 }));
+        const placed = [];
+        const orderedLabels = [...labels].sort((a, b) => a.ptX - b.ptX);
+        orderedLabels.forEach(label => {
+          let bestScore = Infinity, bestPos = null;
+
+          for (const cand of CANDIDATES) {
+            const rad = cand.angle * Math.PI / 180;
+            const ax  = label.ptX + Math.cos(rad) * RADIUS;
+            const ay  = label.ptY - Math.sin(rad) * RADIUS; // y inverted
+
+            const bx = cand.align === 'left'   ? ax :
+                      cand.align === 'right'  ? ax - label.w :
+                                                ax - label.w / 2;
+            const by = cand.baseline === 'top'    ? ay :
+                      cand.baseline === 'bottom' ? ay - label.h :
+                                                    ay - label.h / 2;
+
+            let score = cand.pref * PREF_WT;
+
+            // penalty
+            for (const p of placed) {
+              const ox = Math.min(bx + label.w, p.x + p.w) - Math.max(bx, p.x) + PAD;
+              const oy = Math.min(by + label.h, p.y + p.h) - Math.max(by, p.y) + PAD;
+              if (ox > 0 && oy > 0) score += ox * oy * 8;
+            }
+            for (const po of pointObstacles) {
+              if (po.x === label.ptX && po.y === label.ptY) continue;
+              const nearX = Math.max(bx, Math.min(po.x, bx + label.w));
+              const nearY = Math.max(by, Math.min(po.y, by + label.h));
+              const dist  = Math.hypot(nearX - po.x, nearY - po.y);
+              if (dist < po.r) score += (po.r - dist) * 80;
+            }
+
+            if (score < bestScore) {
+              bestScore = score;
+              bestPos   = { ax, ay, bx, by, align: cand.align, baseline: cand.baseline };
+            }
+          }
+
+          label.ax       = bestPos.ax;
+          label.ay       = bestPos.ay;
+          label.x        = bestPos.bx;
+          label.y        = bestPos.by;
+          label.align    = bestPos.align;
+          label.baseline = bestPos.baseline;
+          placed.push({ x: bestPos.bx, y: bestPos.by, w: label.w, h: label.h });
+        });
+
+        // 3: draw
+        labels.forEach(label => {
+          ctx.fillStyle    = label.color;
+          ctx.textAlign    = label.align;
+          ctx.textBaseline = label.baseline;
+          ctx.fillText(label.text, label.ax, label.ay);
+        });
+
+        ctx.restore();
+      }
+    };
+
+    const gridGlowPlugin = {
+      id: 'gridGlow',
+      beforeDraw(chart) {
+        const ctx = chart.ctx;
+        const area = chart.chartArea;
+        const grd = ctx.createLinearGradient(0, area.top, 0, area.bottom);
+        grd.addColorStop(0, 'rgba(207,138,184,0.01)');
+        grd.addColorStop(1, 'rgba(241,92,202,0.02)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+      }
+    };
+
+    const FONT = '"Zen Maru Gothic", sans-serif';
+    const ctx = document.getElementById('benchmarkChart').getContext('2d');
+
+    const chart = new Chart(ctx, {
+      type: 'scatter',
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 350, easing: 'easeOutQuart' },
+        layout: { padding: { top: 14, right: 100, bottom: 10, left: 10 } },
+        scales: {
+          x: {
+            type: 'linear',
+            title: {
+              display: true,
+              text: 'SCORE (%)',
+              color: '#CF8AB8',
+              font: { family: FONT, size: 14, weight: '700' },
+              padding: { top: 12 },
+            },
+            min: 0,
+            max: 100,
+            grid: { color: 'rgba(207,138,184,0.07)', lineWidth: 1 },
+            border: { color: 'rgba(207,138,184,0.15)' },
+            ticks: {
+              color: 'rgba(207,138,184,0.6)',
+              font: { family: FONT, size: 13, weight: '500' },
+              callback: (v) => v + '%',
+              stepSize: 10,
+            },
+          },
+          y: {
+            type: 'logarithmic', //log scale
+            title: {
+              display: true,
+              text: 'TIME / RESPONSE (s)',
+              color: '#CF8AB8',
+              font: { family: FONT, size: 14, weight: '700' },
+              padding: { bottom: 12 },
+            },
+            min: 1,
+            max: 80,
+            reverse: false,
+            grid: { color: 'rgba(207,138,184,0.07)', lineWidth: 1 },
+            border: { color: 'rgba(207,138,184,0.15)' },
+            afterBuildTicks: (axis) => {
+              // primary markers
+              const majorTicks = [1, 2, 5, 10, 20, 40, 80];
+              // secondary assistant markers
+              const assistantTicks = [3, 4, 6, 7, 8, 9, 15, 30, 50, 60, 70];
+              
+              const allTicks = [...new Set([...majorTicks, ...assistantTicks])].sort((a, b) => a - b);
+              axis.ticks = allTicks.map(v => ({ value: v }));
+            },
+            ticks: {
+              color: 'rgba(207,138,184,0.6)',
+              font: { family: FONT, size: 13, weight: '500' },
+              callback: function(value) {
+                const labelsToShow = [1, 2, 5, 10, 20, 40, 80];
+                return labelsToShow.includes(value) ? value + 's' : '';
+              },
+            },
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(15,15,26,0.95)',
+            borderColor: 'rgba(207,138,184,0.3)',
+            borderWidth: 1,
+            titleFont: { family: FONT, size: 13, weight: '700' },
+            bodyFont: { family: FONT, size: 11 },
+            titleColor: '#F15CCA',
+            bodyColor: '#CF8AB8',
+            padding: 14,
+            cornerRadius: 8,
+            filter: (item) => {
+              const ds = item.dataset;
+              return !ds.label.startsWith('_line_');
+            },
+            callbacks: {
+              title: (items) => items[0].raw.modelName || '',
+              label: (item) => `Score: ${item.raw.x}%  ·  Time: ${item.raw.y.toFixed(2)}s`,
+            },
+          },
+        },
+      },
+      plugins: [gridGlowPlugin, labelPlugin],
+    });
+
+    // sort models by lab legend
+    const legendEl = document.getElementById('customLegend');
+    const legendItems = {};
+
+    Object.entries(orgMeta).forEach(([org, meta]) => {
+      const div = document.createElement('div');
+      div.className = 'legend-item';
+      div.innerHTML = `<span class="legend-dot" style="background:${meta.color};color:${meta.color}"></span>${meta.label}`;
+
+      div.addEventListener('click', () => {
+        if (selectedOrg === org) {
+          // Deselection
+          selectedOrg = null;
+          Object.values(legendItems).forEach(el => el.classList.remove('active', 'dimmed'));
+        } else {
+          // Selection
+          selectedOrg = org;
+          Object.entries(legendItems).forEach(([k, el]) => {
+            el.classList.toggle('active', k === org);
+            el.classList.toggle('dimmed', k !== org);
+          });
+        }
+        applyFilter(chart);
+      });
+
+      legendItems[org] = div;
+      legendEl.appendChild(div);
+    });
+    </script>
+  </body>
+</html>
