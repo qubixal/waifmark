@@ -1,6 +1,7 @@
-
 # Waifmark-1
 A benchmark testing local agentic capabilities and speech persona of small (V)LLMs.
+
+Waifmark 1 is now visible <a href=https://qubixal.github.io/waifmark/><u>here!</u></a>
 
 Due to my personal hardware limitations, only models < ~9b are tested.\
 I apologise for any inconviences.
