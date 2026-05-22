@@ -278,7 +278,7 @@
     // labelling data + glowing plugin
     const labelPlugin = {
       id: 'pointLabels',
-      afterDraw(chart) {
+      afterDatasetsDraw(chart) {
         const ctx = chart.ctx;
         ctx.save();
         ctx.font = '500 13px "Zen Maru Gothic", sans-serif';
