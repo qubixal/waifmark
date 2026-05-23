@@ -169,41 +169,52 @@
     <script>
       //YES THIS IS HARD CODED DATA
       //JUST SIMPLER TO MANAGE FOR NOW....
-    const rawData = [
-      { model: "Qwen3.5 9B Q4",         org: "QWEN", score: 86.33, time: 9.717 },
-      { model: "Qwen3-2507-4BI Q4",     org: "QWEN", score: 78.50, time: 2.485 },
-      { model: "Qwen3-2507-4BI Q8",     org: "QWEN", score: 64.33, time: 3.903 },
-      { model: "Qwen3-vl-4B Q4",        org: "QWEN", score: 42.00, time: 2.102 },
-      { model: "Qwen3-vl-8B Q8",        org: "QWEN", score: 66.83, time: 4.558 },
-      { model: "Gemma4-e4b Q8",         org: "GOOG", score: 68.83, time: 20.189 },
-      { model: "Gemma4-e4b Q4",         org: "GOOG", score: 54.50, time: 14.076 },
-      { model: "Gemma4-e2b Q8",         org: "GOOG", score: 53.83, time: 13.612 },
-      { model: "Gemma3n-a4bI Q4",       org: "GOOG", score: 46.67, time: 3.290 },
-      { model: "r1-0528qwen8b Q8",      org: "DPSK", score: 61.17, time: 41.420 },
-      { model: "r1-0528qwen8b Q4",      org: "DPSK", score: 38.33, time: 57.988 },
-      { model: "Ministral 3 14B Q4",    org: "MIST", score: 47.00, time: 20.619 },
-      { model: "4.6VFlash 9B Q4",       org: "GLM",  score: 44.17, time: 31.179 },
-      { model: "RNJ-1 8B Q8",           org: "ESSE", score: 37.00, time: 6.363 },
-      { model: "RNJ-1 8B Q4",           org: "ESSE", score: 36.67, time: 5.071 },
-      { model: "Nemotron3nano Q8",      org: "NVDA", score: 18.00, time: 13.192 },
-    ];
+      const rawData = [
+        { model: "Qwen3.5 4B Uncensor Q4", org: "TEST", score: 78.00, time: 55.900 },
+        { model: "Qwen3.5 4B Opus Q4",     org: "TEST", score: 55.00, time: 18.998 },
 
-    const orgMeta = {
-      QWEN: { color: "#F15CCA", label: "Qwen (Alibaba)" },
-      GOOG: { color: "#6BCB77", label: "Google (Gemma)" },
-      DPSK: { color: "#3B45FF", label: "DeepSeek" },
-      MIST: { color: "#EC7A55", label: "Mistral" },
-      GLM:  { color: "#227DFF", label: "GLM (Zhipu)" },
-      ESSE: { color: "#FECB33", label: "Essense (RNJ)" },
-      NVDA: { color: "#83BF0D", label: "NVIDIA" },
-    };
+        { model: "Qwen3.5 9B Q4",          org: "QWEN", score: 86.00, time: 9.717 },
+        { model: "Qwen3-2507 (I) Q4",      org: "QWEN", score: 74.00, time: 2.485 },
+        { model: "Qwen3-2507 (I) Q8",      org: "QWEN", score: 60.67, time: 3.903 },
+        { model: "Qwen3-vl-4b Q4",         org: "QWEN", score: 42.00, time: 2.102 },
+        { model: "Qwen3-vl-8b Q4",         org: "QWEN", score: 66.83, time: 4.558 },
+
+        { model: "Gemma3n (I) Q4",        org: "GOOG", score: 46.17, time: 3.290 },
+        { model: "Gemma3n (I) Q8",        org: "GOOG", score: 44.50, time: 5.778 },
+        { model: "Gemma4-e4b Q4",          org: "GOOG", score: 54.50, time: 14.076 },
+        { model: "Gemma4-e4b Q8",          org: "GOOG", score: 68.83, time: 20.189 },
+        { model: "Gemma4-e2b Q8",          org: "GOOG", score: 53.83, time: 13.612 },
+
+        { model: "r1-0528qwen Q4",         org: "DPSK", score: 38.33, time: 57.988 },
+        { model: "r1-0528qwen Q8",         org: "DPSK", score: 60.33, time: 41.420 },
+
+        { model: "Ministral 3 14b Q4",     org: "MIST", score: 44.50, time: 20.619 },
+
+        { model: "4.6VFlash Q4",           org: "GLM",  score: 42.50, time: 31.179 },
+
+        { model: "RNJ-1 Q4",               org: "ESSE", score: 36.00, time: 5.071 },
+        { model: "RNJ-1 Q8",               org: "ESSE", score: 37.00, time: 6.363 },
+
+        { model: "Nemotron3nano Q8",       org: "NVDA", score: 16.33, time: 13.192 }
+      ];
+
+      const orgMeta = {
+        QWEN: { color: "#F15CCA", label: "Qwen (Alibaba)" },
+        GOOG: { color: "#6BCB77", label: "Google (Gemma)" },
+        DPSK: { color: "#3B45FF", label: "DeepSeek" },
+        MIST: { color: "#EC7A55", label: "Mistral" },
+        GLM:  { color: "#227DFF", label: "GLM (Zhipu)" },
+        ESSE: { color: "#FECB33", label: "Essense (RNJ)" },
+        NVDA: { color: "#83BF0D", label: "NVIDIA" },
+        TEST: { color: "#AAAAAA", label: "Test Org" },
+      };
 
     // greyed out styles
     const GRAY_POINT  = '#474C60';
     const GRAY_LINE   = 'rgba(58,58,61,0.35)';
     const GRAY_LABEL  = 'rgba(71,67,114,0.45)';
 
-    let selectedOrg = null;
+    let selectedOrgs = [];
 
     // grouping by ai organisation lab
     const orgGroups = {};
@@ -260,7 +271,7 @@
       chart.data.datasets.forEach(ds => {
         const org = ds._org;
         const isLine = ds.label.startsWith('_line_');
-        const isActive = !selectedOrg || org === selectedOrg;
+        const isActive = selectedOrgs.length === 0 || selectedOrgs.includes(org);
 
         if (isLine) {
           ds.borderColor = isActive ? ds._origBorderColor : GRAY_LINE;
@@ -290,7 +301,7 @@
           if (ds.label.startsWith('_line_')) return;
           const dsIdx = chart.data.datasets.indexOf(ds);
           const meta  = chart.getDatasetMeta(dsIdx);
-          const isActive = !selectedOrg || ds._org === selectedOrg;
+          const isActive = selectedOrgs.length === 0 || selectedOrgs.includes(ds._org);
           const chartMidY = (chart.chartArea.top + chart.chartArea.bottom) / 2;
 
           meta.data.forEach((pt, i) => {
@@ -517,16 +528,29 @@
       div.innerHTML = `<span class="legend-dot" style="background:${meta.color};color:${meta.color}"></span>${meta.label}`;
 
       div.addEventListener('click', () => {
-        if (selectedOrg === org) {
+        if (selectedOrgs.includes(org)) {
           // Deselection
-          selectedOrg = null;
-          Object.values(legendItems).forEach(el => el.classList.remove('active', 'dimmed'));
+          selectedOrgs = selectedOrgs.filter(o => o !== org);
+
+          if (selectedOrgs.length === 0) {
+            Object.values(legendItems).forEach(el => el.classList.remove('active', 'dimmed'));
+          } else {
+            Object.entries(legendItems).forEach(([k, el]) => {
+              el.classList.toggle('active', selectedOrgs.includes(k));
+              el.classList.toggle('dimmed', !selectedOrgs.includes(k));
+            });
+          }
         } else {
-          // Selection
-          selectedOrg = org;
+          // Selection (max 2)
+          if (selectedOrgs.length >= 2) {
+            // remove the oldest selection
+            selectedOrgs.shift();
+          }
+          selectedOrgs.push(org);
+
           Object.entries(legendItems).forEach(([k, el]) => {
-            el.classList.toggle('active', k === org);
-            el.classList.toggle('dimmed', k !== org);
+            el.classList.toggle('active', selectedOrgs.includes(k));
+            el.classList.toggle('dimmed', selectedOrgs.length > 0 && !selectedOrgs.includes(k));
           });
         }
         applyFilter(chart);
