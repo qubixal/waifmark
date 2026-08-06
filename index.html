@@ -60,6 +60,16 @@
         pointer-events: none;
       }
 
+      .header-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 4px;
+      }
+
+      .header-titles { min-width: 0; }
+
       h1 {
         text-align: left;
         font-family: var(--font);
@@ -81,6 +91,45 @@
         margin-bottom: 5px;
         letter-spacing: 1.5px;
         text-transform: uppercase;
+      }
+
+      .version-toggle {
+        display: flex;
+        flex-shrink: 0;
+        padding: 3px;
+        border-radius: 22px;
+        background: rgba(58, 58, 61, 0.5);
+        border: 1px solid rgba(207, 138, 184, 0.18);
+      }
+
+      .version-toggle button {
+        font-family: var(--font);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        color: rgba(255,255,255,0.55);
+        background: transparent;
+        border: none;
+        border-radius: 18px;
+        padding: 7px 16px;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        user-select: none;
+      }
+
+      .version-toggle button.active {
+        background: linear-gradient(135deg, rgba(209,88,180,0.35), rgba(241,92,202,0.22));
+        color: #fff;
+        box-shadow: 0 0 14px rgba(209, 88, 180, 0.25);
+      }
+
+      .version-note {
+        text-align: center;
+        font-size: 11px;
+        color: rgba(207, 138, 184, 0.25);
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        transition: opacity 0.3s ease;
       }
 
       .canvas-container {
@@ -142,38 +191,34 @@
       .legend-item.dimmed .legend-dot {
         box-shadow: none;
       }
-
-      .hint {
-        text-align: center;
-        font-size: 11px;
-        color: rgba(207, 138, 184, 0.25);
-        margin-top: -4px;
-        margin-bottom: 8px;
-        letter-spacing: 0.5px;
-        transition: opacity 0.3s ease;
-      }
     </style>
   </head>
   <body>
 
     <div class="chart-wrapper">
-      <h1>Waifmark 1 for Small (V)LLMs</h1>
-      <div class="subtitle">Score vs Latency</div>
+      <div class="header-row">
+        <div class="header-titles">
+          <h1 id="chartTitle">Waifmark 1 for Small (V)LLMs</h1>
+          <div class="subtitle">Score vs Latency</div>
+        </div>
+        <div class="version-toggle" id="versionToggle">
+          <button data-version="v1" class="active">Waifmark 1</button>
+          <button data-version="v2">Waifmark 2</button>
+        </div>
+      </div>
       <div class="canvas-container">
         <canvas id="benchmarkChart"></canvas>
       </div>
       <div class="legend-container" id="customLegend"></div>
-      <!-- <div class="hint" id="hint"></div> */ -->
+      <div class="version-note" id="versionNote"></div>
     </div>
 
     <script>
-      //YES THIS IS HARD CODED DATA
-      //JUST SIMPLER TO MANAGE FOR NOW....
-      const rawData = [
-        // { model: "Qwen3.5 4B Uncensor Q4", org: "TEST", score: 77.83, time: 55.900 },
-        // { model: "Qwen3.5 4B Opus Q4",     org: "TEST", score: 55.00, time: 18.998 },
-        // { model: "Qwen3.5 4B Q8", org: "TEST", score: 73.17, time: 5.291 },
-
+      // ─────────────────────────────────────────────
+      // Waifmark 1 results — historical board data.
+      // Preserved from the original Waifmark 1 leaderboard.
+      // ─────────────────────────────────────────────
+      const v1Data = [
         { model: "Qwen3.5 9B Q4",          org: "QWEN", score: 86.00, time: 9.717 },
         { model: "Qwen3-2507 (I) Q4",      org: "QWEN", score: 74.00, time: 2.485 },
         { model: "Qwen3-2507 (I) Q8",      org: "QWEN", score: 60.67, time: 3.903 },
@@ -199,6 +244,16 @@
         { model: "Nemotron3nano Q8",       org: "NVDA", score: 16.33, time: 13.192 }
       ];
 
+      // ─────────────────────────────────────────────
+      // Waifmark 2 results.
+      // Populate this array from benchmark run files once
+      // v2 grading + the revised test bank are finalised:
+      //
+      //   { model: "Qwen3.5 9B Q4", org: "QWEN", score: 71.25, time: 28.651 }
+      //   { model: "minicpm5 1b Q4", org: "MISC", score: 12.60, time: 5.402 }
+      // ─────────────────────────────────────────────
+      const v2Data = [];
+
       const orgMeta = {
         QWEN: { color: "#F15CCA", label: "Qwen (Alibaba)" },
         GOOG: { color: "#6BCB77", label: "Google (Gemma)" },
@@ -207,66 +262,65 @@
         GLM:  { color: "#227DFF", label: "GLM (Zhipu)" },
         ESSE: { color: "#FECB33", label: "Essense (RNJ)" },
         NVDA: { color: "#83BF0D", label: "NVIDIA" },
-        TEST: { color: "#AAAAAA", label: "Test Org" },
+        MISC: { color: "#888888", label: "Other" },
       };
 
-    // greyed out styles
-    const GRAY_POINT  = '#474C60';
-    const GRAY_LINE   = 'rgba(58,58,61,0.35)';
-    const GRAY_LABEL  = 'rgba(71,67,114,0.45)';
+      // greyed out styles
+      const GRAY_POINT  = '#474C60';
+      const GRAY_LINE   = 'rgba(58,58,61,0.35)';
+      const GRAY_LABEL  = 'rgba(71,67,114,0.45)';
 
-    let selectedOrgs = [];
+      let selectedOrgs = [];
 
-    // grouping by ai organisation lab
-    const orgGroups = {};
-    rawData.forEach(d => {
-      if (!orgGroups[d.org]) orgGroups[d.org] = [];
-      orgGroups[d.org].push(d);
-    });
-    Object.values(orgGroups).forEach(arr => arr.sort((a, b) => a.score - b.score));
-
-    const datasets = [];
-    const datasetOrgMap = [];
-
-    Object.entries(orgGroups).forEach(([org, models]) => {
-      const meta = orgMeta[org];
-
-      if (models.length > 1) {
-        datasets.push({
-          label: `_line_${org}`,
-          data: models.map(m => ({ x: m.score, y: m.time })),
-          borderColor: meta.color + "88",
-          borderWidth: 2,
-          borderDash: [6, 4],
-          pointRadius: 0,
-          pointHoverRadius: 0,
-          showLine: true,
-          fill: false,
-          tension: 0,
-          order: 2,
-          _org: org,
-          _origBorderColor: meta.color + "88",
+      // Build Chart.js datasets from a raw data array, grouping by lab org.
+      function buildDatasets(rawData) {
+        const orgGroups = {};
+        rawData.forEach(d => {
+          if (!orgGroups[d.org]) orgGroups[d.org] = [];
+          orgGroups[d.org].push(d);
         });
-        datasetOrgMap.push(org);
-      }
+        Object.values(orgGroups).forEach(arr => arr.sort((a, b) => a.score - b.score));
 
-      datasets.push({
-        label: meta.label,
-        data: models.map(m => ({ x: m.score, y: m.time, modelName: m.model })),
-        backgroundColor: meta.color,
-        borderColor: meta.color,
-        pointRadius: 7,
-        pointHoverRadius: 10,
-        pointBorderWidth: 2,
-        pointBorderColor: meta.color + '44',
-        showLine: false,
-        order: 1,
-        _org: org,
-        _origColor: meta.color,
-        _origBorderColor: meta.color + '44',
-      });
-      datasetOrgMap.push(org);
-    });
+        const datasets = [];
+        Object.entries(orgGroups).forEach(([org, models]) => {
+          const meta = orgMeta[org] || { color: "#888888", label: org };
+
+          if (models.length > 1) {
+            datasets.push({
+              label: `_line_${org}`,
+              data: models.map(m => ({ x: m.score, y: m.time })),
+              borderColor: meta.color + "88",
+              borderWidth: 2,
+              borderDash: [6, 4],
+              pointRadius: 0,
+              pointHoverRadius: 0,
+              showLine: true,
+              fill: false,
+              tension: 0,
+              order: 2,
+              _org: org,
+              _origBorderColor: meta.color + "88",
+            });
+          }
+
+          datasets.push({
+            label: meta.label,
+            data: models.map(m => ({ x: m.score, y: m.time, modelName: m.model })),
+            backgroundColor: meta.color,
+            borderColor: meta.color,
+            pointRadius: 7,
+            pointHoverRadius: 10,
+            pointBorderWidth: 2,
+            pointBorderColor: meta.color + '44',
+            showLine: false,
+            order: 1,
+            _org: org,
+            _origColor: meta.color,
+            _origBorderColor: meta.color + '44',
+          });
+        });
+        return datasets;
+      }
 
     function applyFilter(chart) {
       chart.data.datasets.forEach(ds => {
@@ -338,7 +392,6 @@
         });
 
         // 2: pick the best position on a circle around each point.
-        // candidate label positions tried in order
         const CANDIDATES = [
           { angle:   0, align: 'left',   baseline: 'middle', pref: 0 },  // right
           { angle:  45, align: 'left',   baseline: 'bottom', pref: 1 },  // upper-right
@@ -349,8 +402,7 @@
           { angle: 225, align: 'right',  baseline: 'top',    pref: 3 },  // lower-left
           { angle: 180, align: 'right',  baseline: 'middle', pref: 4 },  // left
         ];
-        const RADIUS   = 14; // px from point center to label 
-        // i should probably make these adjust on page...
+        const RADIUS   = 14; // px from point center to label
         const PAD      = 5;  // extra spacing between label boxes
         const PREF_WT  = 150;
 
@@ -363,18 +415,17 @@
           for (const cand of CANDIDATES) {
             const rad = cand.angle * Math.PI / 180;
             const ax  = label.ptX + Math.cos(rad) * RADIUS;
-            const ay  = label.ptY - Math.sin(rad) * RADIUS; // y inverted
+            const ay  = label.ptY - Math.sin(rad) * RADIUS;
 
             const bx = cand.align === 'left'   ? ax :
                       cand.align === 'right'  ? ax - label.w :
                                                 ax - label.w / 2;
             const by = cand.baseline === 'top'    ? ay :
                       cand.baseline === 'bottom' ? ay - label.h :
-                                                    ay - label.h / 2;
+                            ay - label.h / 2;
 
             let score = cand.pref * PREF_WT;
 
-            // penalty
             for (const p of placed) {
               const ox = Math.min(bx + label.w, p.x + p.w) - Math.max(bx, p.x) + PAD;
               const oy = Math.min(by + label.h, p.y + p.h) - Math.max(by, p.y) + PAD;
@@ -433,7 +484,7 @@
 
     const chart = new Chart(ctx, {
       type: 'scatter',
-      data: { datasets },
+      data: { datasets: buildDatasets(v1Data) },
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -519,47 +570,87 @@
       plugins: [gridGlowPlugin, labelPlugin],
     });
 
-    // sort models by lab legend
-    const legendEl = document.getElementById('customLegend');
-    const legendItems = {};
+    // ── Legend (rebuilt when switching versions) ──
+    let legendItems = {};
 
-    Object.entries(orgMeta).forEach(([org, meta]) => {
-      const div = document.createElement('div');
-      div.className = 'legend-item';
-      div.innerHTML = `<span class="legend-dot" style="background:${meta.color};color:${meta.color}"></span>${meta.label}`;
+    function buildLegend() {
+      const legendEl = document.getElementById('customLegend');
+      legendEl.innerHTML = '';
+      legendItems = {};
 
-      div.addEventListener('click', () => {
-        if (selectedOrgs.includes(org)) {
-          // Deselection
-          selectedOrgs = selectedOrgs.filter(o => o !== org);
+      // Only render orgs that currently have data.
+      const presentOrgs = new Set();
+      chart.data.datasets.forEach(ds => presentOrgs.add(ds._org));
 
-          if (selectedOrgs.length === 0) {
-            Object.values(legendItems).forEach(el => el.classList.remove('active', 'dimmed'));
+      Object.entries(orgMeta).forEach(([org, meta]) => {
+        if (!presentOrgs.has(org)) return;
+        const div = document.createElement('div');
+        div.className = 'legend-item';
+        div.innerHTML = `<span class="legend-dot" style="background:${meta.color};color:${meta.color}"></span>${meta.label}`;
+
+        div.addEventListener('click', () => {
+          if (selectedOrgs.includes(org)) {
+            selectedOrgs = selectedOrgs.filter(o => o !== org);
+            if (selectedOrgs.length === 0) {
+              Object.values(legendItems).forEach(el => el.classList.remove('active', 'dimmed'));
+            } else {
+              Object.entries(legendItems).forEach(([k, el]) => {
+                el.classList.toggle('active', selectedOrgs.includes(k));
+                el.classList.toggle('dimmed', !selectedOrgs.includes(k));
+              });
+            }
           } else {
+            if (selectedOrgs.length >= 2) selectedOrgs.shift();
+            selectedOrgs.push(org);
             Object.entries(legendItems).forEach(([k, el]) => {
               el.classList.toggle('active', selectedOrgs.includes(k));
-              el.classList.toggle('dimmed', !selectedOrgs.includes(k));
+              el.classList.toggle('dimmed', selectedOrgs.length > 0 && !selectedOrgs.includes(k));
             });
           }
-        } else {
-          // Selection (max 2)
-          if (selectedOrgs.length >= 2) {
-            // remove the oldest selection
-            selectedOrgs.shift();
-          }
-          selectedOrgs.push(org);
+          applyFilter(chart);
+        });
 
-          Object.entries(legendItems).forEach(([k, el]) => {
-            el.classList.toggle('active', selectedOrgs.includes(k));
-            el.classList.toggle('dimmed', selectedOrgs.length > 0 && !selectedOrgs.includes(k));
-          });
-        }
-        applyFilter(chart);
+        legendItems[org] = div;
+        legendEl.appendChild(div);
       });
+    }
 
-      legendItems[org] = div;
-      legendEl.appendChild(div);
+    // ── Version toggle ──
+    const VERSION_TITLES = { v1: 'Waifmark 1 for Small (V)LLMs', v2: 'Waifmark 2 for Small (V)LLMs' };
+    const VERSION_NOTES = {
+      v1: 'Waifmark 1 board, preserved.',
+      v2: 'Waifmark 2 scores land after grading + test bank revision.',
+
+    };
+
+    function setVersion(version) {
+      const data = version === 'v2' ? v2Data : v1Data;
+      chart.data.datasets = buildDatasets(data);
+      chart.update('none');
+
+      document.getElementById('chartTitle').textContent = VERSION_TITLES[version];
+      document.getElementById('versionNote').textContent =
+        version === 'v2' && v2Data.length === 0 ? VERSION_NOTES.v2 : '';
+
+      selectedOrgs = [];
+      buildLegend();
+      document.querySelectorAll('#versionToggle button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.version === version);
+      });
+    }
+
+    document.querySelectorAll('#versionToggle button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.version === 'v1' && v1Data.length) setVersion('v1');
+        else if (btn.dataset.version === 'v2' && v2Data.length) setVersion('v2');
+        else if (btn.dataset.version === 'v2') {
+          // no v2 data yet — show the note but stay on v1
+          document.getElementById('versionNote').textContent = VERSION_NOTES.v2;
+        }
+      });
     });
+
+    buildLegend();
     </script>
   </body>
 </html>

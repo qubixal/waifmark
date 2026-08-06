@@ -1,0 +1,20 @@
+.env
+models/
+data/results/*.json
+data/results/*.jsonl
+data/results/*.log
+__pycache__/
+
+# Test data (kept proprietary in Waifmark 2)
+data/test_bank.json
+
+# Virtual environments
+venv/
+.venv/
+*.env
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+dist/
