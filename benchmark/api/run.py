@@ -38,11 +38,58 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--host", default=web.get("host", "127.0.0.1"))
     p.add_argument("--port", type=int, default=int(web.get("port", 8001)))
     p.add_argument("--reload", action="store_true", help="Enable auto-reload")
+    p.add_argument("--stop", action="store_true", help="One-liner to end: kill any waifmark on this port")
     return p.parse_args()
+
+
+def _stop(port: int) -> None:
+    import subprocess
+
+    try:
+        out = subprocess.check_output(["lsof", "-ti", f":{port}"], text=True)
+        pids = [pid.strip() for pid in out.split() if pid.strip()]
+    except Exception:
+        pids = []
+    if not pids:
+        # fallback pkill
+        try:
+            subprocess.run(["pkill", "-f", f"uvicorn api.app:app.*{port}"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["pkill", "-f", f"api.run.*{port}"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["pkill", "-f", f"waifmark.*{port}"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+        # re-check
+        try:
+            out = subprocess.check_output(["lsof", "-ti", f":{port}"], text=True)
+            pids = [pid.strip() for pid in out.split() if pid.strip()]
+        except Exception:
+            pids = []
+    if pids:
+        print(f"Stopping waifmark on :{port} — pids {', '.join(pids)}")
+        for pid in pids:
+            try:
+                subprocess.run(["kill", pid], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+        # force if still alive
+        import time
+
+        time.sleep(1)
+        for pid in pids:
+            try:
+                subprocess.run(["kill", "-9", pid], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+        print("Stopped.")
+    else:
+        print(f"No waifmark found on :{port}")
 
 
 def main() -> None:
     args = parse_args()
+    if args.stop:
+        _stop(int(args.port))
+        return
     import uvicorn
 
     uvicorn.run("api.app:app", host=args.host, port=args.port, reload=args.reload)

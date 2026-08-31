@@ -22,6 +22,12 @@ waifmark              # ← boots FastAPI app at http://127.0.0.1:8001
 # open http://127.0.0.1:8001  +  http://127.0.0.1:8001/docs  +  http://127.0.0.1:8001/chart
 ```
 
+To end:
+```bash
+waifmark --stop        # or: python run.py --stop  /  python -m api.run --stop
+# shell: kill $(lsof -ti :8001)  # or: pkill -f "uvicorn api.app:app"
+```
+
 Alternatives:
 ```bash
 python -m api.run --host 127.0.0.1 --port 8001   # same as waifmark

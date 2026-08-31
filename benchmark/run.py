@@ -39,12 +39,28 @@ def parse_args():
     ap.add_argument("--host", default=None, help="Host (default from config.yaml web.host or 127.0.0.1)")
     ap.add_argument("--port", type=int, default=None, help="Port (default from config.yaml web.port or 8001)")
     ap.add_argument("--reload", action="store_true", help="Uvicorn reload")
+    ap.add_argument("--stop", action="store_true", help="One-liner to end: waifmark stop / python run.py --stop")
     return ap.parse_args()
 
 def main():
     ensure_env()
     ensure_dirs()
     args = parse_args()
+    if args.stop:
+        import subprocess
+
+        port = int(args.port or 8001)
+        if args.port is None:
+            try:
+                import yaml
+
+                cfg = yaml.safe_load((BASE / "config.yaml").read_text())
+                port = int(cfg.get("web", {}).get("port", 8001))
+            except Exception:
+                pass
+        # delegate to api.run --stop (one-liner: kill $(lsof -ti :8001))
+        subprocess.run([sys.executable, "-m", "api.run", "--port", str(port), "--stop"], check=False)
+        return
     # defer to api.run
     sys.path.insert(0, str(BASE))
     from api.run import main as api_main
