@@ -6,165 +6,541 @@
 <title>Waifmark 2 — Leaderboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
-  :root{ --bg:#0F0F1A; --bg2:#161625; --card:#1A1A2E; --p1:#CF8AB8; --p2:#D158B4; --p3:#F15CCA; --ok:#6BCB77; --warn:#FECB33; --bad:#EC7A55; --muted:#6B7094; --font:'Zen Maru Gothic', sans-serif; --mono:'JetBrains Mono', monospace; }
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{background:var(--bg);color:#e0e0e0;font-family:var(--font);min-height:100vh;padding:18px;max-width:1320px;margin:0 auto}
-  a{color:var(--p1);text-decoration:none}
-  .topbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-  .brand{font-weight:900;letter-spacing:0.5px;background:linear-gradient(90deg,var(--p1),var(--p2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:18px}
-  .brand small{font-weight:600;letter-spacing:1px;text-transform:uppercase;color:rgba(207,138,184,0.5);-webkit-text-fill-color:rgba(207,138,184,0.5);margin-left:6px;font-size:9px}
-  .card{background:var(--card);border:1px solid rgba(207,138,184,0.12);border-radius:14px;padding:14px;box-shadow:0 4px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.03);display:flex;flex-direction:column}
-  .btn{font-family:var(--font);font-weight:800;letter-spacing:0.03em;border-radius:999px;padding:9px 14px;border:1px solid transparent;cursor:pointer;transition:all .15s;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
-  .btn-primary{background:linear-gradient(135deg,var(--p2),var(--p3));color:#fff;box-shadow:0 4px 18px rgba(241,92,202,0.25)}
-  .btn-secondary{background:rgba(255,255,255,0.06);color:#e0e0e0;border-color:rgba(207,138,184,0.16)}
-  .btn-secondary:hover{background:rgba(207,138,184,0.12)}
-  .muted{color:var(--muted)}
-  .small{font-size:12px}
-  .table-wrap{flex:1;min-height:0;overflow:auto;border:1px solid rgba(207,138,184,0.12);border-radius:10px;background:rgba(255,255,255,0.01);margin-top:10px}
+  @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap');
+  :root {
+    --bg: #0F0F1A;
+    --p1: #CF8AB8;
+    --p2: #D158B4;
+    --p3: #F15CCA;
+    --s1: #3A3231;
+    --s2: #3A3A3D;
+    --s3: #474C60;
+    --s4: rgba(71, 67, 114, 0.8);
+    --font: 'Zen Maru Gothic', 'Tsukimi Rounded', 'Rounded Mplus 1c', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: #e0e0e0;
+    font-family: var(--font);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .topbar {
+    width: 100%;
+    max-width: 1100px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .brand {
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    background: linear-gradient(90deg, var(--p1) 0%, var(--p2) 70%, var(--p3) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-size: 16px;
+  }
+  .brand small {
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(207, 138, 184, 0.5);
+    -webkit-text-fill-color: rgba(207, 138, 184, 0.5);
+    margin-left: 6px;
+    font-size: 9px;
+  }
+  .btn-back {
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #e0e0e0;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(207, 138, 184, 0.16);
+    border-radius: 999px;
+    padding: 7px 14px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+  .btn-back:hover { background: rgba(207,138,184,0.12); border-color: rgba(207,138,184,0.24); }
+  .chart-wrapper {
+    width: 100%;
+    max-width: 1100px;
+    position: relative;
+    border-radius: 10px;
+    padding: 30px 28px 20px;
+    border: 0px solid rgba(207, 138, 184, 0.15);
+    box-shadow:
+      0 0 80px rgba(209, 88, 180, 0.06),
+      0 4px 40px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .chart-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(160deg, rgba(207,138,184,0.25), rgba(241,92,202,0.05));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  .header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 4px;
+  }
+  .header-titles { min-width: 0; }
+  h1 {
+    text-align: left;
+    font-family: var(--font);
+    font-size: 30px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    background: linear-gradient(90deg, var(--p1) 0%, var(--p2) 70%, var(--p3) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    text-align: left;
+    font-size: 15px;
+    font-weight: 500;
+    color: rgba(207, 138, 184, 0.45);
+    margin-bottom: 5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .version-toggle {
+    display: flex;
+    flex-shrink: 0;
+    padding: 3px;
+    border-radius: 22px;
+    background: rgba(58, 58, 61, 0.5);
+    border: 1px solid rgba(207, 138, 184, 0.18);
+  }
+  .version-toggle button {
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.55);
+    background: transparent;
+    border: none;
+    border-radius: 18px;
+    padding: 7px 16px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    user-select: none;
+  }
+  .version-toggle button.active {
+    background: linear-gradient(135deg, rgba(209,88,180,0.35), rgba(241,92,202,0.22));
+    color: #fff;
+    box-shadow: 0 0 14px rgba(209, 88, 180, 0.25);
+  }
+  .version-note {
+    text-align: center;
+    font-size: 11px;
+    color: rgba(207, 138, 184, 0.25);
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    transition: opacity 0.3s ease;
+    min-height: 14px;
+  }
+  .canvas-container {
+    position: relative;
+    width: 100%;
+    height: 60vh;
+  }
+  .legend-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 18px;
+    margin-top: 5px;
+    margin-bottom: 8px;
+    padding-top: 14px;
+    border-top: 3px solid rgba(207, 138, 184, 0.1);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.55);
+    cursor: pointer;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+    user-select: none;
+  }
+  .legend-item:hover {
+    background: rgba(207, 138, 184, 0.08);
+    border-color: rgba(207, 138, 184, 0.15);
+  }
+  .legend-item.active {
+    background: rgba(207, 138, 184, 0.12);
+    border-color: rgba(207, 138, 184, 0.3);
+    color: rgba(255,255,255,0.85);
+  }
+  .legend-item.dimmed { opacity: 0.35; }
+  .legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 6px currentColor;
+    transition: all 0.3s ease;
+  }
+  .legend-item.dimmed .legend-dot { box-shadow: none; }
+  .table-wrap {
+    margin-top: 10px;
+    border: 1px solid rgba(207, 138, 184, 0.12);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.01);
+    overflow: auto;
+    max-height: 38vh;
+  }
   table{width:100%;border-collapse:collapse;font-size:13px}
-  th{font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 6px;border-bottom:1px solid rgba(207,138,184,0.12);position:sticky;top:0;background:var(--card);z-index:1}
+  th{font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:rgba(207,138,184,0.6);text-align:left;padding:8px 6px;border-bottom:1px solid rgba(207,138,184,0.12);position:sticky;top:0;background:var(--bg);z-index:1}
   td{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:top}
   tr:hover td{background:rgba(207,138,184,0.05)}
-  .canvas-wrap{position:relative;height:42vh;min-height:320px;flex-shrink:0}
-  .badge{font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;border-radius:999px;padding:3px 7px;white-space:nowrap}
-  .badge-ok{background:rgba(107,203,119,0.14);color:var(--ok);border:1px solid rgba(107,203,119,0.25)}
+  .export-row{display:flex;justify-content:flex-end;margin-top:8px}
+  .btn-export{
+    font-family:var(--font);font-size:12px;font-weight:700;
+    color:#e0e0e0;background:rgba(255,255,255,0.06);border:1px solid rgba(207,138,184,0.16);
+    border-radius:999px;padding:6px 12px;cursor:pointer;
+  }
+  .btn-export:hover{background:rgba(207,138,184,0.12)}
+  .no-data{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;pointer-events:none;z-index:2}
+  .no-data .big{font-size:15px;font-weight:700;color:rgba(207,138,184,0.4)}
+  .no-data .sub{font-size:11px;color:rgba(207,138,184,0.2)}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:rgba(207,138,184,0.2);border-radius:999px}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(207,138,184,0.35)}
 </style>
 </head>
 <body>
-<div class="topbar">
-  <a href="/" class="btn btn-primary" style="padding:7px 14px;font-size:13px;box-shadow:0 4px 14px rgba(209,88,180,0.25)">← Back to Suite</a>
-  <div class="brand" style="margin-left:8px">Waifmark 2 <small>Leaderboard</small></div>
-  <div style="flex:1"></div>
-  <a href="/docs" target="_blank" class="small muted">API docs</a>
-</div>
-
-<div class="card">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-    <div>
-      <div style="font-size:20px;font-weight:900">Leaderboard</div>
-      <div class="small muted" style="letter-spacing:0.06em;text-transform:uppercase">Score vs Latency — Waifmark 1 (archived) vs Waifmark 2 (live)</div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <div class="version-toggle" id="versionToggle" style="display:flex;padding:3px;border-radius:22px;background:rgba(58,58,61,0.5);border:1px solid rgba(207,138,184,0.18)">
-        <button data-version="v1" class="active" style="font-family:var(--font);font-size:12px;font-weight:700;color:rgba(255,255,255,0.55);background:transparent;border:none;border-radius:18px;padding:7px 16px;cursor:pointer">Waifmark 1</button>
-        <button data-version="v2" style="font-family:var(--font);font-size:12px;font-weight:700;color:rgba(255,255,255,0.55);background:transparent;border:none;border-radius:18px;padding:7px 16px;cursor:pointer">Waifmark 2</button>
-      </div>
-      <button id="btnExportLb" class="btn btn-secondary" style="padding:6px 10px;font-size:12px">Export CSV</button>
-    </div>
+  <div class="topbar">
+    <a href="/" class="btn-back">← Back to Benchmarking Suite</a>
+    <div class="brand" style="margin-left:4px">Waifmark 2 <small>Leaderboard</small></div>
+    <div style="flex:1"></div>
+    <a href="/docs" target="_blank" style="font-size:11px;color:rgba(207,138,184,0.5);text-decoration:none">API docs</a>
   </div>
-  <div id="versionNote" style="text-align:center;font-size:11px;color:rgba(207,138,184,0.45);margin-top:6px;min-height:14px"></div>
-  <div class="canvas-wrap" style="margin-top:10px"><canvas id="benchChart"></canvas></div>
-  <div id="legend" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;border-top:1px solid rgba(207,138,184,0.12);padding-top:10px"></div>
-  <div class="table-wrap"><table id="lbTable"><thead><tr><th>Model</th><th>Overall</th><th>Agentic</th><th>Roleplay</th><th>Date</th><th>#Tasks</th></tr></thead><tbody></tbody></table></div>
-</div>
+
+  <div class="chart-wrapper">
+    <div class="header-row">
+      <div class="header-titles">
+        <h1 id="chartTitle">Waifmark 1 for Small (V)LLMs</h1>
+        <div class="subtitle">Score vs Latency</div>
+      </div>
+      <div class="version-toggle" id="versionToggle">
+        <button data-version="v1" class="active">Waifmark 1</button>
+        <button data-version="v2">Waifmark 2</button>
+      </div>
+    </div>
+    <div class="canvas-container">
+      <canvas id="benchChart"></canvas>
+      <div class="no-data" id="noDataOverlay"><span class="big">No data yet</span><span class="sub">Waifmark 2 scores land after grading.</span></div>
+    </div>
+    <div class="legend-container" id="legend"></div>
+    <div class="table-wrap"><table id="lbTable"><thead><tr><th>Model</th><th>Overall</th><th>Time</th><th>Org</th></tr></thead><tbody></tbody></table></div>
+    <div class="export-row"><button id="btnExportLb" class="btn-export">Export CSV</button></div>
+  </div>
 
 <script>
-async function jget(url){ const r=await fetch(url); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+async function jget(url){const r=await fetch(url);if(!r.ok)throw new Error(await r.text());return r.json();}
 let chart=null;
 let currentVersion='v1';
 let v2Runs=[], v2Chart=[];
-// Waifmark 1 archived data (from root index.html)
-const v1Data = [
-  { model: "Qwen3.5 9B Q4",          org: "QWEN", score: 86.00, time: 9.717 },
-  { model: "Qwen3-2507 (I) Q4",      org: "QWEN", score: 74.00, time: 2.485 },
-  { model: "Qwen3-2507 (I) Q8",      org: "QWEN", score: 60.67, time: 3.903 },
-  { model: "Qwen3-vl-4b Q4",         org: "QWEN", score: 42.00, time: 2.102 },
-  { model: "Qwen3-vl-8b Q4",         org: "QWEN", score: 66.83, time: 4.558 },
-  { model: "Gemma3n (I) Q4",        org: "GOOG", score: 46.17, time: 3.290 },
-  { model: "Gemma3n (I) Q8",        org: "GOOG", score: 44.50, time: 5.778 },
-  { model: "Gemma4-e4b Q4",          org: "GOOG", score: 54.50, time: 14.076 },
-  { model: "Gemma4-e4b Q8",          org: "GOOG", score: 68.83, time: 20.189 },
-  { model: "Gemma4-e2b Q8",          org: "GOOG", score: 53.83, time: 13.612 },
-  { model: "r1-0528qwen Q4",         org: "DPSK", score: 38.33, time: 57.988 },
-  { model: "r1-0528qwen Q8",         org: "DPSK", score: 60.33, time: 41.420 },
-  { model: "Ministral 3 14b Q4",     org: "MIST", score: 44.50, time: 20.619 },
-  { model: "4.6VFlash Q4",           org: "GLM",  score: 42.50, time: 31.179 },
-  { model: "RNJ-1 Q4",               org: "ESSE", score: 36.00, time: 5.071 },
-  { model: "RNJ-1 Q8",               org: "ESSE", score: 37.00, time: 6.363 },
-  { model: "Nemotron3nano Q8",       org: "NVDA", score: 16.33, time: 13.192 }
+const v1Data=[
+  {model:"Qwen3.5 9B Q4",     org:"QWEN",score:86.00,time:9.717},
+  {model:"Qwen3-2507 (I) Q4", org:"QWEN",score:74.00,time:2.485},
+  {model:"Qwen3-2507 (I) Q8", org:"QWEN",score:60.67,time:3.903},
+  {model:"Qwen3-vl-4b Q4",    org:"QWEN",score:42.00,time:2.102},
+  {model:"Qwen3-vl-8b Q4",    org:"QWEN",score:66.83,time:4.558},
+  {model:"Gemma3n (I) Q4",   org:"GOOG",score:46.17,time:3.290},
+  {model:"Gemma3n (I) Q8",   org:"GOOG",score:44.50,time:5.778},
+  {model:"Gemma4-e4b Q4",     org:"GOOG",score:54.50,time:14.076},
+  {model:"Gemma4-e4b Q8",     org:"GOOG",score:68.83,time:20.189},
+  {model:"Gemma4-e2b Q8",     org:"GOOG",score:53.83,time:13.612},
+  {model:"r1-0528qwen Q4",    org:"DPSK",score:38.33,time:57.988},
+  {model:"r1-0528qwen Q8",    org:"DPSK",score:60.33,time:41.420},
+  {model:"Ministral 3 14b Q4",org:"MIST",score:44.50,time:20.619},
+  {model:"4.6VFlash Q4",      org:"GLM", score:42.50,time:31.179},
+  {model:"RNJ-1 Q4",          org:"ESSE",score:36.00,time:5.071},
+  {model:"RNJ-1 Q8",          org:"ESSE",score:37.00,time:6.363},
+  {model:"Nemotron3nano Q8",  org:"NVDA",score:16.33,time:13.192}
 ];
-const orgMeta={ QWEN:{color:'#F15CCA',label:'Qwen (Alibaba)'}, GOOG:{color:'#6BCB77',label:'Google (Gemma)'}, DPSK:{color:'#3B45FF',label:'DeepSeek'}, MIST:{color:'#EC7A55',label:'Mistral'}, GLM:{color:'#227DFF',label:'GLM (Zhipu)'}, ESSE:{color:'#FECB33',label:'Essense (RNJ)'}, NVDA:{color:'#83BF0D',label:'NVIDIA'}, MISC:{color:'#888888',label:'Other'} };
-function buildChartDatasets(raw){
-  const groups={}; raw.forEach(d=>{ (groups[d.org]=groups[d.org]||[]).push(d); });
+const orgMeta={QWEN:{color:'#F15CCA',label:'Qwen (Alibaba)'},GOOG:{color:'#6BCB77',label:'Google (Gemma)'},DPSK:{color:'#3B45FF',label:'DeepSeek'},MIST:{color:'#EC7A55',label:'Mistral'},GLM:{color:'#227DFF',label:'GLM (Zhipu)'},ESSE:{color:'#FECB33',label:'Essense (RNJ)'},NVDA:{color:'#83BF0D',label:'NVIDIA'}};
+
+let animStart=0;
+let maxRank=0;
+
+function buildDatasets(raw){
+  const sorted=[...raw].sort((a,b)=>a.score-b.score);
+  const rankMap=new Map(sorted.map((d,i)=>[d.model,i]));
+  const groups={};raw.forEach(d=>{(groups[d.org]=groups[d.org]||[]).push(d);});
   Object.values(groups).forEach(a=>a.sort((x,y)=>x.score-y.score));
   const datasets=[];
-  Object.entries(groups).forEach(([org, models])=>{
+  Object.entries(groups).forEach(([org,models])=>{
     const meta=orgMeta[org]||{color:'#888',label:org};
-    if(models.length>1) datasets.push({label:`_line_${org}`, data:models.map(m=>({x:m.score,y:m.time})), borderColor:meta.color+'88', borderWidth:2, borderDash:[6,4], pointRadius:0, showLine:true, tension:0, order:2, _org:org});
-    datasets.push({label:meta.label, data:models.map(m=>({x:m.score,y:m.time,modelName:m.model})), backgroundColor:meta.color, borderColor:meta.color, pointRadius:6, showLine:false, order:1, _org:org});
+    if(models.length>1) datasets.push({label:'_line_'+org,data:models.map(m=>({x:m.score,y:m.time,rank:rankMap.get(m.model)||0})),borderColor:'transparent',borderWidth:0,borderDash:[6,4],pointRadius:0,showLine:true,tension:0,order:2,_org:org,_origBorderColor:meta.color+'88'});
+    datasets.push({label:meta.label,data:models.map(m=>({x:m.score,y:m.time,modelName:m.model,rank:rankMap.get(m.model)||0})),backgroundColor:'transparent',borderColor:'transparent',pointRadius:0,pointHoverRadius:6,showLine:false,order:1,_org:org,_origColor:meta.color,_origBorderColor:meta.color+'44'});
   });
-  return {datasets, groups};
+  return {datasets,groups,sorted};
 }
+
+const appearPlugin={
+  id:'appear',
+  beforeDatasetsDraw(chart){
+    const elapsed=performance.now()-animStart;
+    chart.data.datasets.forEach(ds=>{
+      if(!ds.label.startsWith('_line_')){
+        const radii=[],bg=[],brd=[];
+        ds.data.forEach(raw=>{
+          const rank=raw.rank||0;
+          if(elapsed<rank*55){radii.push(0);bg.push('transparent');brd.push('transparent');}
+          else{const t=Math.min(1,(elapsed-rank*55)/180);const e=1-Math.pow(1-t,3);radii.push(6*e);bg.push(ds._origColor+hexA(e*255));brd.push(ds._origColor+hexA(e*180));}
+        });
+        ds.pointRadius=radii;ds.pointBackgroundColor=bg;ds.pointBorderColor=brd;
+      }else{
+        const ranks=ds.data.map(d=>d.rank||0);const mn=Math.min(...ranks),mx=Math.max(...ranks);
+        const t=Math.min(1,Math.max(0,(elapsed-mn*55)/((mx-mn)*55+180||1)));
+        ds.borderColor=t>0?ds._origBorderColor.slice(0,7)+hexA(t*136):'transparent';
+        ds.borderWidth=t>0?2:0;
+      }
+    });
+  }
+};
+
+const quadrantPlugin={
+  id:'quadrant',
+  beforeDatasetsDraw(chart){
+    const{ctx,scales:{x,y}}=chart;
+    if(!x||!y)return;
+    const xL=x.getPixelForValue(75),xR=x.getPixelForValue(100);
+    const yT=y.getPixelForValue(10),yB=y.getPixelForValue(1);
+    if(xL>=xR||yT>=yB)return;
+    ctx.save();
+    ctx.fillStyle='rgba(107,203,119,0.05)';
+    ctx.strokeStyle='rgba(107,203,119,0.15)';
+    ctx.lineWidth=1;ctx.setLineDash([5,3]);
+    roundedRect(ctx,xL,yT,xR-xL,yB-yT,8);
+    ctx.fill();ctx.stroke();
+    ctx.restore();
+  }
+};
+
+function roundedRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+const CANDIDATES=[
+  {angle:0,align:'left',baseline:'middle',pref:0},
+  {angle:45,align:'left',baseline:'bottom',pref:1},
+  {angle:315,align:'left',baseline:'top',pref:1},
+  {angle:90,align:'center',baseline:'bottom',pref:2},
+  {angle:270,align:'center',baseline:'top',pref:2},
+  {angle:135,align:'right',baseline:'bottom',pref:3},
+  {angle:225,align:'right',baseline:'top',pref:3},
+  {angle:180,align:'right',baseline:'middle',pref:4},
+];
+const RADIUS=14,PAD=4,PREF_WT=150;
+
+const labelPlugin={
+  id:'pointLabels',
+  afterDatasetsDraw(chart){
+    const elapsed=performance.now()-animStart;
+    if(elapsed<85)return;
+    const ctx=chart.ctx;
+    ctx.save();
+    ctx.font='500 13px "Zen Maru Gothic",sans-serif';
+    const labels=[];
+    const midY=(chart.chartArea.top+chart.chartArea.bottom)/2;
+    chart.data.datasets.forEach((ds,dsIdx)=>{
+      if(ds.label.startsWith('_line_'))return;
+      const meta=chart.getDatasetMeta(dsIdx);
+      const active=!chart.$waifmarkFiltered||chart.$waifmarkFiltered.has(ds._org);
+      if(!active)return;
+      meta.data.forEach((pt,i)=>{
+        const raw=ds.data[i];
+        const rank=raw.rank||i;
+        const popAt=rank*55+600;
+        if(elapsed<popAt)return;
+        const tw=ctx.measureText(raw.modelName).width;
+        labels.push({text:raw.modelName,ptX:pt.x,ptY:pt.y,w:tw,h:12,rank,color:ds._origColor+'cc'});
+      });
+    });
+    if(!labels.length){ctx.restore();return;}
+    if(!chart.$labelCache||chart.$labelCacheKey!==labels.length+''+labels[0]?.ptX){
+      const placed=[];
+      labels.sort((a,b)=>a.rank-b.rank).forEach(label=>{
+        let best=Infinity,bestPos=null;
+        for(const c of CANDIDATES){
+          const rad=c.angle*Math.PI/180;
+          const ax=label.ptX+Math.cos(rad)*RADIUS;
+          const ay=label.ptY-Math.sin(rad)*RADIUS;
+          const bx=c.align==='left'?ax:c.align==='right'?ax-label.w:ax-label.w/2;
+          const by=c.baseline==='top'?ay:c.baseline==='bottom'?ay-label.h:ay-label.h/2;
+          let s=c.pref*PREF_WT;
+          for(const p of placed){
+            const ox=Math.min(bx+label.w,p.x+p.w)-Math.max(bx,p.x)+PAD;
+            const oy=Math.min(by+label.h,p.y+p.h)-Math.max(by,p.y)+PAD;
+            if(ox>0&&oy>0)s+=ox*oy*8;
+          }
+          if(s<best){best=s;bestPos={ax,ay,bx,by,align:c.align,baseline:c.baseline};}
+        }
+        label.ax=bestPos.ax;label.ay=bestPos.ay;label.x=bestPos.bx;label.y=bestPos.by;label.align=bestPos.align;label.baseline=bestPos.baseline;
+        placed.push({x:bestPos.bx,y:bestPos.by,w:label.w,h:label.h});
+      });
+      chart.$labelCache=labels;
+      chart.$labelCacheKey=labels.length+''+labels[0]?.ptX;
+    }
+    const cached=chart.$labelCache;
+    cached.forEach(l=>{
+      const opacity=Math.min(1,Math.max(0,(elapsed-l.rank*55-600)/180));
+      if(opacity<=0)return;
+      ctx.globalAlpha=opacity;
+      ctx.fillStyle=l.color;
+      ctx.textAlign=l.align;
+      ctx.textBaseline=l.baseline;
+      ctx.fillText(l.text,l.ax,l.ay);
+      ctx.globalAlpha=opacity*0.35;
+      const grd=ctx.createRadialGradient(l.ptX,l.ptY,0,l.ptX,l.ptY,14);
+      grd.addColorStop(0,l.color.slice(0,7)+'40');grd.addColorStop(1,l.color.slice(0,7)+'00');
+      ctx.fillStyle=grd;ctx.beginPath();ctx.arc(l.ptX,l.ptY,14,0,Math.PI*2);ctx.fill();
+    });
+    ctx.restore();
+  }
+};
+
+function hexA(v){return Math.round(Math.min(255,Math.max(0,v))).toString(16).padStart(2,'0');}
+
 function renderChart(raw){
   const ctx=document.getElementById('benchChart').getContext('2d');
-  if(chart) chart.destroy();
-  const {datasets, groups}=buildChartDatasets(raw);
-  chart=new Chart(ctx,{type:'scatter', data:{datasets}, options:{responsive:true, maintainAspectRatio:false, scales:{x:{min:0,max:100,title:{display:true,text:'SCORE (%)',color:'#CF8AB8'}}, y:{type:'logarithmic',min:1,max:80,title:{display:true,text:'TIME / RESPONSE (s)',color:'#CF8AB8'}}}, plugins:{legend:{display:false}}}});
-  const leg=document.getElementById('legend'); leg.innerHTML='';
-  Object.entries(orgMeta).forEach(([k,m])=>{
-    if(!groups[k]) return;
-    const div=document.createElement('div'); div.textContent=m.label; div.style.cssText='padding:4px 8px;border-radius:999px;border:1px solid transparent;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.65)';
-    div.style.borderColor='rgba(207,138,184,0.15)'; div.style.background='rgba(207,138,184,0.06)';
-    const dot=document.createElement('span'); dot.style.cssText=`display:inline-block;width:8px;height:8px;border-radius:50%;background:${m.color};margin-right:6px;box-shadow:0 0 6px ${m.color}`;
-    div.prepend(dot); leg.appendChild(div);
+  if(chart){chart.destroy();chart=null;}
+  const noData=document.getElementById('noDataOverlay');
+  if(!raw||!raw.length){
+    noData.style.display='flex';
+    if(rafId)cancelAnimationFrame(rafId);rafId=0;
+    chart=new Chart(ctx,{type:'scatter',data:{datasets:[]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:0},layout:{padding:{top:14,right:100,bottom:10,left:10}},scales:{x:{type:'linear',min:0,max:100,display:false},y:{type:'logarithmic',min:1,max:80,display:false}},plugins:{legend:{display:false},tooltip:{enabled:false}}}});
+    const leg=document.getElementById('legend');leg.innerHTML='';
+    return;
+  }
+  noData.style.display='none';
+  const {datasets,groups}=buildDatasets(raw);
+  maxRank=0;datasets.forEach(ds=>{if(!ds.label.startsWith('_line_'))ds.data.forEach(d=>{if(d.rank>maxRank)maxRank=d.rank;});});
+  animStart=performance.now();
+  chart=new Chart(ctx,{
+    type:'scatter',
+    data:{datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      animation:{duration:0},
+      layout:{padding:{top:14,right:100,bottom:10,left:10}},
+      scales:{
+        x:{type:'linear',min:0,max:100,title:{display:true,text:'SCORE (%)',color:'#CF8AB8',font:{family:'Zen Maru Gothic',size:14,weight:'700'},padding:{top:12}},grid:{color:'rgba(207,138,184,0.07)'},border:{color:'rgba(207,138,184,0.15)'},ticks:{color:'rgba(207,138,184,0.6)',font:{family:'Zen Maru Gothic',size:13,weight:'500'},callback:v=>v+'%',stepSize:10}},
+        y:{type:'logarithmic',min:1,max:80,title:{display:true,text:'TIME / RESPONSE (s)',color:'#CF8AB8',font:{family:'Zen Maru Gothic',size:14,weight:'700'},padding:{bottom:12}},grid:{color:'rgba(207,138,184,0.07)'},border:{color:'rgba(207,138,184,0.15)'},afterBuildTicks:axis=>{const a=[1,2,5,10,20,40,80],b=[3,4,6,7,8,9,15,30,50,60,70];axis.ticks=[...new Set([...a,...b])].sort((x,y)=>x-y).map(v=>({value:v}))},ticks:{color:'rgba(207,138,184,0.6)',font:{family:'Zen Maru Gothic',size:13,weight:'500'},callback:function(v){return[1,2,5,10,20,40,80].includes(v)?v+'s':''}}}
+      },
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(15,15,26,0.95)',borderColor:'rgba(207,138,184,0.3)',borderWidth:1,titleFont:{family:'Zen Maru Gothic',size:13,weight:'700'},bodyFont:{family:'Zen Maru Gothic',size:11},titleColor:'#F15CCA',bodyColor:'#CF8AB8',padding:14,cornerRadius:8,filter:item=>!item.dataset.label.startsWith('_line_'),callbacks:{title:items=>items[0].raw.modelName||'',label:item=>'Score: '+item.raw.x+'%  ·  Time: '+item.raw.y.toFixed(2)+'s'}}}
+    },
+    plugins:[quadrantPlugin,appearPlugin,labelPlugin]
   });
+  const leg=document.getElementById('legend');leg.innerHTML='';chart.$waifmarkFiltered=null;
+  Object.entries(orgMeta).forEach(([k,m])=>{
+    if(!groups[k])return;
+    const div=document.createElement('div');div.className='legend-item';div.innerHTML='<span class="legend-dot" style="background:'+m.color+';color:'+m.color+'"></span>'+m.label;
+    div.addEventListener('click',()=>{
+      const isActive=div.classList.contains('active');
+      document.querySelectorAll('.legend-item').forEach(el=>el.classList.remove('active','dimmed'));
+      if(!isActive){
+        div.classList.add('active');
+        document.querySelectorAll('.legend-item').forEach(el=>{if(el!==div)el.classList.add('dimmed');});
+        chart.$waifmarkFiltered=new Set([k]);
+      }else{
+        chart.$waifmarkFiltered=null;
+      }
+      chart.update('none');
+    });
+    leg.appendChild(div);
+  });
+  scheduleLoop();
 }
+
+let rafId=0;
+function scheduleLoop(){
+  if(rafId)cancelAnimationFrame(rafId);
+  function tick(){
+    const elapsed=performance.now()-animStart;
+    const done=elapsed>=maxRank*55+900;
+    if(!done){chart.update('none');rafId=requestAnimationFrame(tick);}else{rafId=0;}
+  }
+  rafId=requestAnimationFrame(tick);
+}
+
 function renderTableV1(){
-  const tb=document.querySelector('#lbTable tbody'); tb.innerHTML='';
-  // header for v1
+  const tb=document.querySelector('#lbTable tbody');tb.innerHTML='';
   document.querySelector('#lbTable thead').innerHTML='<tr><th>Model</th><th>Overall</th><th>Time</th><th>Org</th></tr>';
   v1Data.slice().sort((a,b)=>b.score-a.score).forEach(r=>{
-    const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.model}</td><td>${r.score.toFixed(1)}</td><td>${r.time.toFixed(2)}s</td><td>${orgMeta[r.org]?.label||r.org}</td>`; tb.appendChild(tr);
+    const tr=document.createElement('tr');tr.innerHTML='<td>'+r.model+'</td><td>'+r.score.toFixed(1)+'</td><td>'+r.time.toFixed(2)+'s</td><td>'+(orgMeta[r.org]?.label||r.org)+'</td>';tb.appendChild(tr);
   });
 }
 function renderTableV2(){
   document.querySelector('#lbTable thead').innerHTML='<tr><th>Model</th><th>Overall</th><th>Agentic</th><th>Roleplay</th><th>Date</th><th>#Tasks</th></tr>';
-  const tb=document.querySelector('#lbTable tbody'); tb.innerHTML='';
+  const tb=document.querySelector('#lbTable tbody');tb.innerHTML='';
   v2Runs.slice().sort((a,b)=>b.overall-a.overall).forEach(r=>{
-    const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.model_name.split('/').slice(-2).join('/')}</td><td>${r.overall.toFixed(1)}</td><td>${r.agentic.toFixed(1)}</td><td>${r.roleplay.toFixed(1)}</td><td>${new Date(r.date*1000).toLocaleDateString()}</td><td>${r.num_tasks}</td>`; tb.appendChild(tr);
+    const tr=document.createElement('tr');tr.innerHTML='<td>'+r.model_name.split('/').slice(-2).join('/')+'</td><td>'+r.overall.toFixed(1)+'</td><td>'+r.agentic.toFixed(1)+'</td><td>'+r.roleplay.toFixed(1)+'</td><td>'+new Date(r.date*1000).toLocaleDateString()+'</td><td>'+r.num_tasks+'</td>';tb.appendChild(tr);
   });
 }
 async function loadLeaderboard(){
   try{
     const d=await jget('/api/leaderboard');
-    v2Runs=d.runs||[]; v2Chart=d.chart||[];
-    // default to v1 on first load to match root behavior, but if v2 has data, show v2? Keep v1 default.
-    if(currentVersion==='v1'){ renderChart(v1Data); renderTableV1(); document.getElementById('versionNote').textContent='Waifmark 1 board, preserved.'; }
-    else { renderChart(v2Chart); renderTableV2(); document.getElementById('versionNote').textContent = v2Chart.length ? '' : 'Waifmark 2 scores land after grading + test bank revision.'; }
-  }catch(e){ console.error(e); }
+    v2Runs=d.runs||[];v2Chart=d.chart||[];
+    if(currentVersion==='v1'){renderChart(v1Data);renderTableV1();document.getElementById('versionNote').textContent='Waifmark 1 board, preserved.';}
+    else{renderChart(v2Chart.length?v2Chart:[]);renderTableV2();document.getElementById('versionNote').textContent=v2Chart.length?'':'Waifmark 2 scores land after grading + test bank revision.';}
+  }catch(e){console.error(e);}
 }
 function setVersion(v){
   currentVersion=v;
-  document.querySelectorAll('#versionToggle button').forEach(btn=>{
-    const isActive = btn.dataset.version===v;
-    btn.classList.toggle('active', isActive);
-    btn.style.background = isActive ? 'linear-gradient(135deg, rgba(209,88,180,0.35), rgba(241,92,202,0.22))' : 'transparent';
-    btn.style.color = isActive ? '#fff' : 'rgba(255,255,255,0.55)';
-    btn.style.boxShadow = isActive ? '0 0 14px rgba(209,88,180,0.25)' : 'none';
-  });
-  if(v==='v1'){ renderChart(v1Data); renderTableV1(); document.getElementById('versionNote').textContent='Waifmark 1 board, preserved.'; }
-  else {
-    if(!v2Chart.length && !v2Runs.length){ document.getElementById('versionNote').textContent='Waifmark 2 scores land after grading + test bank revision.'; }
-    else { document.getElementById('versionNote').textContent=''; }
-    renderChart(v2Chart); renderTableV2();
-  }
+  document.querySelectorAll('#versionToggle button').forEach(btn=>btn.classList.toggle('active',btn.dataset.version===v));
+  document.getElementById('chartTitle').textContent=v==='v1'?'Waifmark 1 for Small (V)LLMs':'Waifmark 2 for Small (V)LLMs';
+  if(v==='v1'){renderChart(v1Data);renderTableV1();document.getElementById('versionNote').textContent='Waifmark 1 board, preserved.';}
+  else{if(!v2Chart.length&&!v2Runs.length){document.getElementById('versionNote').textContent='Waifmark 2 scores land after grading + test bank revision.';renderChart([]);renderTableV2();}else{document.getElementById('versionNote').textContent='';renderChart(v2Chart);renderTableV2();}}
 }
-document.querySelectorAll('#versionToggle button').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    const v=btn.dataset.version;
-    if(v==='v1') setVersion('v1');
-    else if(v==='v2') setVersion('v2');
-  });
-});
-document.getElementById('btnExportLb').addEventListener('click', async()=>{
+document.querySelectorAll('#versionToggle button').forEach(btn=>{btn.addEventListener('click',()=>setVersion(btn.dataset.version));});
+document.getElementById('btnExportLb').addEventListener('click',async()=>{
   if(currentVersion==='v1'){
-    let csv='Model,Overall,Time,Org\n'; v1Data.forEach(r=> csv+=`"${r.model}",${r.score},${r.time},${r.org}\n`);
-    const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='waifmark1_leaderboard.csv'; a.click(); URL.revokeObjectURL(url);
-  } else {
-    const d=await jget('/api/leaderboard'); const rows=d.runs||[];
-    let csv='Model,Overall,Agentic,Roleplay,Date,Tasks\n'; rows.forEach(r=> csv+=`"${r.model_name}",${r.overall},${r.agentic},${r.roleplay},${new Date(r.date*1000).toISOString()},${r.num_tasks}\n`);
-    const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='waifmark_leaderboard.csv'; a.click(); URL.revokeObjectURL(url);
+    let csv='Model,Overall,Time,Org\n';v1Data.forEach(r=>csv+='"'+r.model+'",'+r.score+','+r.time+','+r.org+'\n');
+    const b=new Blob([csv],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='waifmark1_leaderboard.csv';a.click();URL.revokeObjectURL(u);
+  }else{
+    const d=await jget('/api/leaderboard');const rows=d.runs||[];
+    let csv='Model,Overall,Agentic,Roleplay,Date,Tasks\n';rows.forEach(r=>csv+='"'+r.model_name+'",'+r.overall+','+r.agentic+','+r.roleplay+','+new Date(r.date*1000).toISOString()+','+r.num_tasks+'\n');
+    const b=new Blob([csv],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='waifmark_leaderboard.csv';a.click();URL.revokeObjectURL(u);
   }
 });
 loadLeaderboard();

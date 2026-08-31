@@ -28,36 +28,37 @@
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   @media(max-width:700px){.grid{grid-template-columns:1fr}}
   .badge{font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;border-radius:999px;padding:3px 7px;background:rgba(107,203,119,0.14);color:var(--ok);border:1px solid rgba(107,203,119,0.25)}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:rgba(207,138,184,0.2);border-radius:999px}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(207,138,184,0.35)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="hero">
     <h1>Waifmark 2 Benchmarking Suite</h1>
-    <p>Local agentic + roleplay/persona benchmark for small (V)LLMs. Agentic: tool-calling, JSON, file search, calc, safe shell. Persona: multi-turn Aura, safety traps, 中/Eng. Scored 0–100 with LLM-as-judge v2 + triage.</p>
+    <p>Local agentic + roleplay/persona benchmark for small (V)LLMs.</p>
     <div class="cta">
       <a href="http://127.0.0.1:8001" class="btn btn-primary">Open Control Center →</a>
       <a href="http://127.0.0.1:8001/chart" class="btn btn-secondary">View Leaderboard</a>
       <a href="http://127.0.0.1:8001/docs" class="btn btn-secondary">API Docs</a>
     </div>
-    <div style="margin-top:10px;font-size:11px;color:var(--muted)">New app default: FastAPI + vanilla JS. No Streamlit. <span class="badge">waifmark</span> boots at 127.0.0.1:8001.</div>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted)">By default, <span class="badge">waifmark</span> boots at 127.0.0.1:8001.</div>
   </div>
 
   <div class="card">
-    <h2>Install & Boot — one command</h2>
-    <p class="small muted" style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Python 3.10+ • waifmark is the new default</p>
+    <h2>Install & Boot</h2>
     <pre>cd benchmark
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt        # installs waifmark + FastAPI app
 cp .env.example .env  # add OPENROUTER_API_KEY / HF_TOKEN if you have them
 waifmark              # ← boots at http://127.0.0.1:8001
-# alternatives:
-# python -m api.run --host 127.0.0.1 --port 8001
-# python run.py
-# uvicorn api.app:app --host 127.0.0.1 --port 8001 --reload  # dev</pre>
+
+#note: python 3.11+ recommended for vLLM, 3.10+ for llama.cpp</pre>
     <div class="grid">
       <div>
-        <h3>Env for API keys (auto-created if missing)</h3>
+        <h3>Env for API keys</h3>
         <pre>cp .env.example .env
 # OPENROUTER_API_KEY=sk-or-…
 # HF_TOKEN=hf_…</pre>
@@ -70,9 +71,9 @@ waifmark              # ← boots at http://127.0.0.1:8001
     </div>
     <h3>Before benchmarking</h3>
     <ul>
-      <li>Set <code>model</code> in <code>config.yaml</code> under <code>judges.model</code> (e.g. <code>google/gemma-4-31b-it:free</code>) and <code>model_under_test.name</code> to your GGUF or HF path.</li>
-      <li>Small models are sensitive to chat templates — check <code>vLLM --chat-template</code> and <code>config.yaml chat_template</code> if scores look off.</li>
-      <li>Test bank is proprietary: use <code>data/test_bank.example.json</code> or drop your <code>data/test_bank.json</code> (gitignored).</li>
+      <li>Set <code>model</code> in <code>config.yaml</code> under <code>judges.model</code> (e.g. <code>google/gemma-4-31b-it:free</code>) and <code>model_under_test.name</code></li>
+      <li>Small models are sensitive to chat templates, so check <code>vLLM --chat-template</code> and <code>config.yaml chat_template</code> if scores look abnormally low.</li>
+      <li>Waifmark 2's test bank is proprietary; drop your own <code>data/test_bank.json</code> if you want to.</li>
     </ul>
   </div>
 
@@ -122,7 +123,7 @@ pytest  # 56 passed
 python -c "from fastapi.testclient import TestClient; from api.app import app; print(TestClient(app).get('/api/health').json())"</pre>
   </div>
 
-  <div style="text-align:center;padding:14px;color:var(--muted);font-size:11px;letter-spacing:0.06em;text-transform:uppercase">Waifmark 2 • FastAPI app • <a href="http://127.0.0.1:8001">Control Center</a> • <a href="http://127.0.0.1:8001/chart">Leaderboard</a></div>
+  <div style="text-align:center;padding:14px;color:var(--muted);font-size:11px;letter-spacing:0.06em;text-transform:uppercase">Waifmark 2 • <a href="http://127.0.0.1:8001">Control Center</a> • <a href="http://127.0.0.1:8001/chart">Leaderboard</a></div>
 </div>
 </body>
 </html>
