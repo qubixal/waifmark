@@ -1,11 +1,9 @@
 """Subprocess-based benchmark runner.
 
-Instead of running the benchmark in a thread (which dies when Streamlit
-restarts), this module launches it as a separate Python subprocess.  The
-subprocess writes progress to a JSON state file that the UI polls on each
-refresh cycle.
+Runs the benchmark as a separate Python subprocess so it survives UI reloads.
+The subprocess writes progress to a JSON state file that the new app polls.
 
-Usage (from UI):
+Usage (from app):
     from core.benchmark_runner import start_benchmark, poll_benchmark, cancel_benchmark
     start_benchmark(config_text, test_bank_rel)
     state = poll_benchmark()   # called every refresh

@@ -11,8 +11,40 @@ def list_downloaded_models(models_dir: Path) -> list[dict[str, str]]:
     models_dir.mkdir(parents=True, exist_ok=True)
     models = []
     for item in sorted(models_dir.iterdir()):
+        # Include directories (HF repos, symlinked dirs) and top-level gguf files or symlinked files
         if item.is_dir():
+            # Resolve symlink to check if it's a dir; if symlink to file, treat as file
+            try:
+                if item.is_symlink() and item.resolve().is_file():
+                    models.append({"name": item.name, "path": str(item.resolve())})
+                else:
+                    models.append({"name": item.name, "path": str(item)})
+            except Exception:
+                models.append({"name": item.name, "path": str(item)})
+        elif item.is_file() and item.suffix.lower() == ".gguf":
+            # Top-level gguf (including symlink to file)
             models.append({"name": item.name, "path": str(item)})
+        elif item.is_symlink():
+            # Symlink that may point to dir/file but is_dir/is_file check above follows symlink;
+            # handle broken symlinks separately
+            try:
+                target = item.resolve()
+                if target.exists():
+                    models.append({"name": item.name, "path": str(target)})
+            except Exception:
+                pass
+    # Also include externally imported paths tracked in .external.json (if any)
+    external_file = models_dir / ".external.json"
+    if external_file.exists():
+        try:
+            import json
+            data = json.loads(external_file.read_text(encoding="utf-8"))
+            for entry in data:
+                p = Path(entry.get("path", ""))
+                if p.exists():
+                    models.append({"name": entry.get("name", p.name), "path": str(p)})
+        except Exception:
+            pass
     return models
 
 

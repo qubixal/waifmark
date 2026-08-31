@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waifmark 2 — Control Center</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+  :root{ --bg:#0F0F1A; --bg2:#161625; --card:#1A1A2E; --p1:#CF8AB8; --p2:#D158B4; --p3:#F15CCA; --ok:#6BCB77; --warn:#FECB33; --bad:#EC7A55; --muted:#6B7094; --font:'Zen Maru Gothic', sans-serif; --mono:'JetBrains Mono', monospace; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:#e0e0e0;font-family:var(--font);height:100vh;width:100vw;overflow:hidden;display:flex;flex-direction:column}
+  a{color:var(--p1)}
+  /* minimal top brand — no status piles */
+  .topbar{height:38px;min-height:38px;display:flex;align-items:center;gap:12px;padding:0 14px;background:rgba(15,15,26,0.96);backdrop-filter:blur(8px);border-bottom:1px solid rgba(207,138,184,0.08);flex-shrink:0}
+  .brand{font-weight:900;letter-spacing:0.5px;background:linear-gradient(90deg,var(--p1),var(--p2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:22px}
+  .brand small{font-weight:600;letter-spacing:1px;text-transform:uppercase;color:rgba(207,138,184,0.5);-webkit-text-fill-color:rgba(207,138,184,0.5);margin-left:6px;font-size:9px}
+  /* single long page — no snap, tidy */
+  .snap{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth}
+  .snap-section{min-height:auto;display:flex;flex-direction:column;padding:14px 18px 18px;gap:12px;border-bottom:1px solid rgba(207,138,184,0.06);max-width:1320px;margin:0 auto;width:100%}
+  .snap-section.hero{min-height:auto;justify-content:center;padding-bottom:14px}
+  .snap-section:last-child{border-bottom:none}
+  .section-head{display:flex;align-items:flex-end;gap:10px;margin-bottom:2px;flex-wrap:wrap}
+  .section-num{font-size:10px;font-weight:900;letter-spacing:0.08em;color:var(--p1);background:rgba(207,138,184,0.12);border:1px solid rgba(207,138,184,0.18);border-radius:999px;padding:3px 8px}
+  .section-title{font-size:20px;font-weight:900;letter-spacing:0.02em}
+  .section-desc{font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-left:8px}
+  /* floating icon nav */
+  .float-nav{position:fixed;right:14px;top:50%;transform:translateY(-50%);z-index:30;display:flex;flex-direction:column;gap:8px;background:rgba(22,22,37,0.92);backdrop-filter:blur(10px);border:1px solid rgba(207,138,184,0.14);border-radius:22px;padding:8px;box-shadow:0 8px 30px rgba(0,0,0,0.45)}
+  .float-nav button{width:44px;height:44px;border-radius:999px;border:1px solid transparent;background:transparent;color:rgba(255,255,255,0.62);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:all .18s;position:relative}
+  .float-nav button .ic{width:18px;height:18px;display:flex;align-items:center;justify-content:center}
+  .float-nav button .lbl{font-size:7px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;line-height:1}
+  .float-nav button:hover{background:rgba(207,138,184,0.1);color:#fff;border-color:rgba(207,138,184,0.18)}
+  .float-nav button.active{background:linear-gradient(135deg,rgba(209,88,180,0.32),rgba(241,92,202,0.18));color:#fff;border-color:rgba(207,138,184,0.24);box-shadow:0 4px 16px rgba(209,88,180,0.22)}
+  .float-nav button .tip{position:absolute;right:52px;top:50%;transform:translateY(-50%);background:var(--card);border:1px solid rgba(207,138,184,0.18);color:#e0e0e0;font-size:11px;font-weight:700;padding:6px 9px;border-radius:9px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s, transform .15s;transform:translateY(-50%) translateX(4px)}
+  .float-nav button:hover .tip{opacity:1;transform:translateY(-50%) translateX(0)}
+  /* cards & layout */
+  .card{background:var(--card);border:1px solid rgba(207,138,184,0.12);border-radius:14px;padding:14px;box-shadow:0 4px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.03);display:flex;flex-direction:column;min-height:0}
+  .h1{font-size:15px;font-weight:900;margin-bottom:2px}
+  .sub{font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(207,138,184,0.45);margin-bottom:10px}
+  .grid{display:grid;gap:12px}
+  .grid-2{grid-template-columns:1fr 1fr}
+  .grid-3{grid-template-columns:1fr 1fr 1fr}
+  .grid-4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:1100px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr 1fr} .pane-split{grid-template-columns:1fr !important} .float-nav{right:6px}}
+  @media(max-width:700px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr} .float-nav{flex-direction:row;top:auto;bottom:12px;right:50%;transform:translateX(50%);padding:6px 8px} .float-nav button{width:48px;height:42px} .float-nav .lbl-full{display:none !important} .float-nav .lbl-short{display:inline !important}}
+  /* hero landing — compact */
+  .hero{display:grid;grid-template-columns:1.2fr 0.8fr;gap:10px;padding:12px;background:linear-gradient(135deg,rgba(209,88,180,0.07),rgba(241,92,202,0.03));border:1px solid rgba(207,138,184,0.12);border-radius:12px}
+  .hero h2{font-size:18px;font-weight:900;letter-spacing:0.02em;background:linear-gradient(90deg,var(--p1),var(--p2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .hero p{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px}
+  .hero .cta{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .hero-preview{border:1px solid rgba(207,138,184,0.12);border-radius:10px;background:rgba(255,255,255,0.02);padding:8px;overflow:hidden}
+  @media(max-width:1100px){.hero{grid-template-columns:1fr}}
+  label{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:0.04em;text-transform:uppercase}
+  input,select,textarea{width:100%;background:#0f0f1e;color:#e8e8f0;border:1px solid rgba(207,138,184,0.16);border-radius:9px;padding:9px 10px;font-family:var(--font);font-size:13px;outline:none}
+  input:focus,select:focus,textarea:focus{border-color:rgba(207,138,184,0.45);box-shadow:0 0 0 3px rgba(207,138,184,0.12)}
+  .btn{font-family:var(--font);font-weight:700;letter-spacing:0.02em;border-radius:999px;padding:8px 14px;border:1px solid transparent;cursor:pointer;transition:all .15s;white-space:nowrap;font-size:12px;line-height:1.2;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+  .btn-primary{background:linear-gradient(135deg,var(--p2),var(--p3));color:#fff;box-shadow:0 4px 18px rgba(241,92,202,0.25)}
+  .btn-primary:disabled{opacity:0.45;cursor:not-allowed;box-shadow:none}
+  .btn-secondary{background:rgba(255,255,255,0.06);color:#e0e0e0;border-color:rgba(207,138,184,0.16)}
+  .btn-secondary:hover{background:rgba(207,138,184,0.12)}
+  .btn-ghost{background:transparent;color:var(--muted);border-color:rgba(255,255,255,0.06)}
+  .btn-ghost:hover{background:rgba(255,255,255,0.04);color:#e0e0e0}
+  .btn-sm{padding:6px 10px;font-size:11px}
+  .btn-xs{padding:4px 8px;font-size:10px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .kpi{display:flex;flex-direction:column;gap:4px;background:#0f0f1e;border:1px solid rgba(207,138,184,0.1);border-radius:10px;padding:10px 12px;min-width:0}
+  .kpi .k{font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);font-weight:800}
+  .kpi .v{font-size:18px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .log{font-family:var(--mono);font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-word;background:#0a0a14;border:1px solid rgba(207,138,184,0.12);border-radius:10px;padding:10px;overflow:auto;color:#c8c8d8}
+  .badge{font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;border-radius:999px;padding:3px 7px;white-space:nowrap}
+  .badge-ok{background:rgba(107,203,119,0.14);color:var(--ok);border:1px solid rgba(107,203,119,0.25)}
+  .badge-warn{background:rgba(254,203,51,0.14);color:var(--warn);border:1px solid rgba(254,203,51,0.3)}
+  .badge-bad{background:rgba(236,122,85,0.14);color:var(--bad);border:1px solid rgba(236,122,85,0.3)}
+  .muted{color:var(--muted)}
+  /* normalized small + button — fixes misalignment + inconsistent sizes */
+  .small{font-size:11px;line-height:1.5;vertical-align:baseline}
+  .small.muted{line-height:1.5}
+  small{font-size:inherit;line-height:inherit;vertical-align:baseline}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 6px;border-bottom:1px solid rgba(207,138,184,0.12);position:sticky;top:0;background:var(--card);z-index:1}
+  td{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:top}
+  tr:hover td{background:rgba(207,138,184,0.05)}
+  tr.selected td{background:rgba(207,138,184,0.12) !important}
+  .table-wrap{flex:1;min-height:0;overflow:auto;border:1px solid rgba(207,138,184,0.12);border-radius:10px;background:rgba(255,255,255,0.01)}
+  .canvas-wrap{position:relative;height:42vh;min-height:320px;flex-shrink:0}
+  details{border:1px solid rgba(207,138,184,0.12);border-radius:10px;padding:8px 10px;background:rgba(255,255,255,0.02)}
+  details summary{cursor:pointer;font-weight:800;font-size:13px}
+  .pane-split{display:grid;grid-template-columns:380px 1fr;gap:12px;flex:1;min-height:0;align-items:stretch}
+  .pane{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+  .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px;background:#0f0f1e;border:1px solid rgba(207,138,184,0.1);border-radius:10px}
+  .segmented{display:inline-flex;background:rgba(255,255,255,0.06);border:1px solid rgba(207,138,184,0.12);border-radius:999px;padding:3px;gap:3px}
+  .segmented button{font-family:var(--font);font-size:12px;font-weight:800;letter-spacing:0.02em;border-radius:999px;padding:6px 12px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer}
+  .segmented button.active{background:linear-gradient(135deg,rgba(209,88,180,0.32),rgba(241,92,202,0.18));color:#fff;border-color:rgba(207,138,184,0.22);box-shadow:0 2px 10px rgba(209,88,180,0.15)}
+  .segmented button small{opacity:0.7;font-weight:700;margin-left:4px}
+  .listbox{flex:1;min-height:0;overflow:auto;border:1px solid rgba(207,138,184,0.12);border-radius:10px;background:#0f0f1e;display:flex;flex-direction:column}
+  .listbox-row{display:flex;gap:10px;align-items:center;padding:9px 10px;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;transition:background .12s}
+  .listbox-row:hover{background:rgba(207,138,184,0.06)}
+  .listbox-row.selected{background:rgba(207,138,184,0.14);border-left:3px solid var(--p1);padding-left:7px}
+  .listbox-row .kind{font-size:10px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;padding:3px 6px;border-radius:999px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.06);min-width:64px;text-align:center}
+  .listbox-row .task{font-size:12px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .listbox-row .meta{font-size:11px;color:var(--muted);white-space:nowrap}
+  .empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;padding:24px;text-align:center}
+  /* config expandable — condensed */
+  .cfg-group{border:1px solid rgba(207,138,184,0.12);border-radius:10px;background:rgba(255,255,255,0.02);overflow:hidden}
+  .cfg-group summary{list-style:none;padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:800;font-size:12px}
+  .cfg-group summary::-webkit-details-marker{display:none}
+  .cfg-group summary .caret{transition:transform .15s;font-size:10px}
+  .cfg-group[open] summary .caret{transform:rotate(90deg)}
+  .cfg-fields{padding:8px 10px;display:grid;gap:8px;border-top:1px solid rgba(207,138,184,0.08);grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+  .cfg-row{display:grid;grid-template-columns:120px 1fr;gap:8px;align-items:center;background:rgba(15,15,30,0.5);border:1px solid rgba(207,138,184,0.06);border-radius:8px;padding:6px 8px}
+  .cfg-row label{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cfg-row input{padding:6px 8px;font-size:12px}
+  @media(max-width:700px){.cfg-fields{grid-template-columns:1fr} .cfg-row{grid-template-columns:1fr}}
+  /* browse dialog */
+  .browse{border:1px solid rgba(207,138,184,0.12);border-radius:10px;background:#0f0f1e;max-height:240px;overflow:auto}
+  .browse-row{display:flex;gap:8px;align-items:center;padding:7px 10px;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;font-size:12px}
+  .browse-row:hover{background:rgba(207,138,184,0.06)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">Waifmark 2 <small>Benchmarking Suite</small></div>
+  <div class="spacer"></div>
+  <a href="/docs" target="_blank" class="small muted" style="text-decoration:none">API docs</a>
+</div>
+
+<!-- floating icon nav — snap to # -->
+<nav class="float-nav" id="floatNav" aria-label="Sections">
+  <button data-target="sec-models" class="active" title="Model Search"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M16 16l4.5 4.5"/><path d="M8 11h6"/></svg></span><span class="lbl">Search</span><span class="tip">01 — Model Search</span></button>
+  <button data-target="sec-config" title="Config"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M7 12a5 5 0 0 1 10 0 5 5 0 0 1-10 0z" style="opacity:0.0"></path><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83a2 2 0 0 1-2.83 0l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82-.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1V13a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 13 1.65 1.65 0 0 0 19.4 15z"></path></svg></span><span class="lbl">Config</span><span class="tip">02 — Config</span></button>
+  <button data-target="sec-benchmark" title="Benchmark"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span><span class="lbl">Run</span><span class="tip">03 — Benchmark</span></button>
+  <button data-target="sec-audit" title="Audit"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg></span><span class="lbl">Audit</span><span class="tip">04 — Human Audit</span></button>
+  <!-- Leaderboard moved to /chart secondary page -->
+</nav>
+
+<div class="snap" id="snap">
+  <!-- 01 MODELS + HERO LANDING (combined view) -->
+  <section id="sec-models" class="snap-section">
+    <div class="section-head"><span class="section-num">01</span><span class="section-title">Model Search</span><span class="section-desc">Find a model to Benchmark</span></div>
+    <div class="hero">
+      <div>
+        <h2>Waifmark 2 Control Center</h2>
+        <p>Search Hugging Face or directly import GGUF to find your model. Run agentic &amp; roleplay benchmarks, and audit with llm-as-a-judge. <br>See the leaderboard →</p>
+        <div class="cta">
+          <button class="btn btn-primary" onclick="document.getElementById('hfQuery').focus();">Search Models ↓</button>
+          <a href="/chart" class="btn btn-secondary" style="text-decoration:none">View Leaderboard →</a>
+          <button class="btn btn-ghost" onclick="document.getElementById('sec-config').scrollIntoView({behavior:'smooth'})">Config</button>
+        </div>
+        <div class="small muted" style="margin-top:8px">Press 1–4 or use navbar to quickly adjust your workspace.</div>
+      </div>
+      <div class="hero-preview" style="padding:8px">
+        <div class="small" style="font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);font-size:10px">Leaderboard Top 3</div>
+        <div id="heroBoard" class="small" style="margin-top:6px;display:grid;gap:4px"></div>
+      </div>
+    </div>
+    <div class="pane-split" style="margin-top:2px;grid-template-columns:60% 40%">
+      <div class="card pane">
+        <div class="row">
+          <input id="hfQuery" placeholder="e.g. qwen, unsloth, google..." style="flex:1;min-width:120px">
+          <button id="btnHfSearch" class="btn btn-secondary">Search</button>
+        </div>
+        <div class="row" style="margin-top:6px;justify-content:space-between">
+          <span class="small muted" id="hfSearchMeta"></span>
+          <span class="row" style="gap:6px">
+            <label class="small muted" style="font-size:10px">Show</label>
+            <select id="hfLimit" style="width:70px;padding:4px 6px;font-size:11px"><option value="10" selected>10</option></select>
+            <button id="btnHfPrev" class="btn btn-ghost" style="padding:4px 8px;font-size:11px" disabled>← Prev</button>
+            <button id="btnHfNext" class="btn btn-ghost" style="padding:4px 8px;font-size:11px" disabled>Next →</button>
+          </span>
+        </div>
+        <div class="small muted" id="hfSearchHint" style="margin-top:6px"></div>
+        <div class="table-wrap" style="margin-top:8px"><table id="hfTable"><thead><tr><th>#</th><th>Model / Repo ID</th><th>Author</th><th>Downloads</th></tr></thead><tbody></tbody></table></div>
+        <div class="grid grid-2" style="margin-top:10px">
+          <div><label>Download type</label><select id="dlMode"><option>Single File</option><option>Snapshot (full repo)</option></select></div>
+          <div><label>Revision (optional)</label><input id="dlRev" placeholder="main"></div>
+        </div>
+        <div class="grid grid-2" style="margin-top:8px">
+          <div><label>Repository ID</label><input id="dlRepo"></div>
+          <div><label id="dlFileLabel">Filename</label><input id="dlFile" placeholder="e.g. model-Q4_K_M.gguf"><select id="dlFileSel" style="display:none"></select></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button id="btnDlFile" class="btn btn-primary">Download File</button>
+          <button id="btnDlSnap" class="btn btn-primary" style="display:none">Download Snapshot</button>
+          <span id="dlHint" class="small muted"></span>
+        </div>
+        <div id="dlProgress" style="margin-top:8px;display:none">
+          <div class="small muted" id="dlLabel"></div>
+          <div style="height:8px;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden;margin-top:4px"><div id="dlFill" style="height:100%;width:0;background:linear-gradient(90deg,var(--ok),#8be99a)"></div></div>
+          <div class="row small muted" style="margin-top:6px"><span id="dlStats"></span><span id="dlSpeed"></span><span id="dlEta"></span></div>
+          <div id="dlErr" class="small" style="color:var(--bad);margin-top:6px"></div>
+        </div>
+      </div>
+      <div class="card pane" style="gap:10px">
+        <div class="h1">Downloaded Models</div>
+        <div class="table-wrap" style="max-height:28vh"><div class="row" style="padding:8px"><select id="dlModelPick" style="flex:1"></select><input id="dlPort2" type="number" value="8000" style="max-width:110px"><button id="btnUseConfig" class="btn btn-secondary">Use In Config</button></div>
+        <pre id="dlCmd" class="log" style="margin:8px;flex:1;min-height:60px"></pre></div>
+        <!-- Import local weights -->
+        <div class="card" style="background:#0f0f1e;padding:10px;gap:8px">
+          <div class="h1" style="font-size:13px">Import Local Weights</div>
+          <div class="sub" style="margin:0">Directly use a GGUF / HF folder already on this machine</div>
+          <div class="row"><input id="importPath" placeholder="/absolute/path/to/model.gguf or /path/to/hf-folder" style="flex:1"><button id="btnImportBrowse" class="btn btn-ghost" style="padding:7px 10px">Browse</button></div>
+          <div class="grid grid-2">
+            <div><label>Alias (optional)</label><input id="importAlias" placeholder="my-model"></div>
+            <div><label>Strategy</label><select id="importStrategy"><option value="symlink">Symlink (instant)</option><option value="copy">Copy</option></select></div>
+          </div>
+          <div id="browseBox" class="browse" style="display:none"></div>
+          <div class="row"><button id="btnImport" class="btn btn-secondary">Import</button><span id="importHint" class="small muted"></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 CONFIG -->
+  <section id="sec-config" class="snap-section">
+    <div class="section-head"><span class="section-num">02</span><span class="section-title">Config</span><span class="section-desc">Expandable • Import/Export</span></div>
+    <div class="card" style="flex:1;min-height:0">
+      <div class="toolbar" style="justify-content:space-between">
+        <div class="row">
+          <button id="btnCfgExpandAll" class="btn btn-ghost" style="padding:6px 10px;font-size:11px">Expand all</button>
+          <button id="btnCfgCollapseAll" class="btn btn-ghost" style="padding:6px 10px;font-size:11px">Collapse all</button>
+          <label class="row" style="gap:6px;font-size:11px;cursor:pointer;background:rgba(207,138,184,0.08);border:1px solid rgba(207,138,184,0.14);border-radius:999px;padding:4px 10px"><input type="checkbox" id="cfgAdvanced" style="width:auto"> Advanced</label>
+        </div>
+        <div class="row">
+          <button id="btnCfgExportYaml" class="btn btn-secondary" style="padding:6px 10px;font-size:12px">Export YAML</button>
+          <button id="btnCfgExportJson" class="btn btn-secondary" style="padding:6px 10px;font-size:12px">Export JSON</button>
+          <label class="btn btn-ghost" style="padding:6px 10px;font-size:12px;cursor:pointer">Import<input id="cfgImportFile" type="file" accept=".yaml,.yml,.json" style="display:none"></label>
+          <button id="btnCfgSave" class="btn btn-primary" style="padding:6px 14px">Save & Validate</button>
+          <button id="btnCfgReload" class="btn btn-ghost" style="padding:6px 10px">Reload</button>
+        </div>
+      </div>
+      <div class="small muted" id="cfgHint" style="margin-top:6px"></div>
+      <div id="cfgGroups" style="display:grid;gap:8px;margin-top:8px;overflow:auto;flex:1;min-height:0;padding-right:4px"></div>
+      <details id="cfgRawWrap" style="margin-top:8px"><summary>Raw YAML (advanced)</summary><textarea id="cfgText" spellcheck="false" style="font-family:var(--mono);font-size:12px;min-height:220px;resize:vertical;margin-top:8px"></textarea></details>
+      <pre id="cfgVal" class="log" style="display:none;max-height:140px;margin-top:6px"></pre>
+    </div>
+  </section>
+
+  <!-- 03 BENCHMARK -->
+  <section id="sec-benchmark" class="snap-section">
+    <div class="section-head"><span class="section-num">03</span><span class="section-title">Benchmark</span><span class="section-desc">Run • Live log uses full viewport</span></div>
+    <div class="card" style="flex-shrink:0">
+      <div class="grid grid-3">
+        <div><label>Model (downloaded)</label><select id="benchModel"></select><div class="small muted" id="benchModelHint" style="margin-top:4px"></div></div>
+        <div><label>Port</label><input id="benchPort" type="number" value="8000" min="1024" max="65535"></div>
+        <div><label>Test bank</label><select id="benchBank"></select></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button id="btnServerStart" class="btn btn-secondary">Start Server</button>
+        <button id="btnServerStop" class="btn btn-ghost">Stop Server</button>
+        <button id="btnQuickRun" class="btn btn-primary">▶ Quick Run</button>
+        <button id="btnPause" class="btn btn-secondary">Pause</button>
+        <button id="btnAbort" class="btn btn-ghost" style="color:var(--bad);border-color:rgba(236,122,85,0.24)">Abort</button>
+        <span class="small muted" id="benchHint"></span>
+      </div>
+      <div class="grid grid-4" style="margin-top:12px">
+        <div class="kpi"><span class="k">Status</span><span class="v" id="kStatus">idle</span></div>
+        <div class="kpi"><span class="k">Progress</span><span class="v" id="kProg">0/0</span></div>
+        <div class="kpi"><span class="k">Scores (A / R / Overall)</span><span class="v" id="kScores">--</span></div>
+        <div class="kpi"><span class="k">ETA</span><span class="v" id="kEta">—</span></div>
+      </div>
+      <div style="margin-top:10px"><div id="benchBar" style="height:8px;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden"><div id="benchBarFill" style="height:100%;width:0;background:linear-gradient(90deg,var(--p2),var(--p3));transition:width .3s"></div></div></div>
+    </div>
+    <div class="pane-split" style="flex:1;min-height:0;align-items:start">
+      <div class="card pane" style="max-height:62vh">
+        <div class="row" style="justify-content:space-between"><span class="h1" style="font-size:14px">Live Log</span><span class="small muted" id="logModeHint" style="font-size:10px">Verbose</span><label class="row" style="gap:6px;font-size:11px;cursor:pointer"><input type="checkbox" id="logCompact" style="width:auto"> Compact</label><button id="btnClearLog" class="btn btn-ghost" style="padding:4px 8px;font-size:11px">Clear</button></div>
+        <div id="benchLog" class="log" style="flex:1;min-height:160px;max-height:38vh;overflow:auto">No live log yet.</div>
+        <details style="margin-top:8px"><summary>Server logs</summary><pre id="srvLog" class="log" style="max-height:180px"></pre></details>
+      </div>
+      <div class="card pane">
+        <div class="row" style="justify-content:space-between">
+          <div class="h1" style="font-size:14px">Past Runs</div>
+          <div class="row"><button id="btnRefreshRuns" class="btn btn-ghost" style="padding:6px 10px;font-size:12px">Refresh</button><a id="btnDlCsv" class="btn btn-ghost" style="padding:6px 10px;font-size:12px;text-decoration:none" href="#">CSV</a></div>
+        </div>
+        <div class="row" style="margin:6px 0"><select id="pastRunPick" style="flex:1"></select></div>
+        <div id="runSummary" class="grid grid-4" style="margin-top:6px"></div>
+        <div class="table-wrap" style="margin-top:8px"><table id="runTable"><thead><tr><th>Module</th><th>Task</th><th>Score</th><th>Review</th></tr></thead><tbody></tbody></table></div>
+        <div id="runDetail" style="margin-top:8px;overflow:auto;max-height:200px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 AUDIT -->
+  <section id="sec-audit" class="snap-section">
+    <div class="section-head"><span class="section-num">04</span><span class="section-title">Human Audit</span><span class="section-desc">Segmented filter makes bulk scope explicit</span></div>
+    <div class="card" style="flex-shrink:0">
+      <div class="row" style="justify-content:space-between">
+        <span id="auditHint" class="badge badge-warn">0 items</span>
+        <span class="small muted">Search narrows current segment; bulk acts on filtered view</span>
+      </div>
+      <div class="toolbar" style="margin-top:8px;justify-content:space-between">
+        <div class="row" style="gap:10px">
+          <div class="segmented" id="auditSeg" role="tablist">
+            <button data-seg="flagged" class="active">Flagged <small id="segFlaggedCount">0</small></button>
+            <button data-seg="all">All <small id="segAllCount">0</small></button>
+            <button data-seg="forced">Forced <small id="segForcedCount">0</small></button>
+          </div>
+          <input id="auditSearch" placeholder="Search task / model…" style="width:220px">
+        </div>
+        <div class="row">
+          <button id="btnBulkAccept" class="btn btn-secondary" title="Apply judge scores to all filtered flagged items">Accept All Judge Scores</button>
+          <button id="btnBulkResolve" class="btn btn-ghost">Resolve All as Clean</button>
+        </div>
+      </div>
+    </div>
+    <div class="pane-split" style="flex:1;min-height:0">
+      <div class="card pane">
+        <div class="row" style="justify-content:space-between"><label>Review queue</label><span class="small muted" id="auditQueueMeta"></span></div>
+        <div id="auditList" class="listbox" style="margin-top:6px"></div>
+        <select id="auditPick" style="display:none"></select><input type="checkbox" id="auditShowAll" style="display:none">
+      </div>
+      <div class="card pane" style="gap:10px">
+        <div id="auditDetail" class="small" style="flex:1;min-height:0;overflow:auto;border:1px solid rgba(207,138,184,0.1);border-radius:10px;padding:10px;background:#0f0f1e">Select an item.</div>
+        <div class="grid grid-2">
+          <div><label>Human score</label><input id="auditScore" type="number" min="0" max="100" placeholder="0-100"></div>
+          <div><label>Notes</label><input id="auditNotes" placeholder="Your feedback…"></div>
+        </div>
+        <button id="btnAuditSave" class="btn btn-primary" style="width:100%">Save & Resolve</button>
+        <div id="auditJudge" class="card" style="background:#0f0f1e;max-height:200px;overflow:auto"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Leaderboard moved to /chart secondary page -->
+</div>
+
+<script>
+const $ = s=>document.querySelector(s);
+const $$ = s=>document.querySelectorAll(s);
+let benchPollTimer=null, dlPollTimer=null, hfResults=[], auditAllItems=[], auditSeg='flagged', selectedAuditKey=null;
+
+// floating nav — snap to # + spy
+const snapEl = $('#snap');
+$$('#floatNav button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    const id=b.dataset.target;
+    const sec=document.getElementById(id);
+    if(sec) sec.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+});
+const sections = ['sec-models','sec-config','sec-benchmark','sec-audit'].map(id=>document.getElementById(id));
+const navBtns = $$('#floatNav button');
+// ensure default is Search (sec-models) on load
+if(snapEl) snapEl.scrollTop = 0;
+navBtns.forEach((b,i)=> b.classList.toggle('active', i===0));
+const obs = new IntersectionObserver(entries=>{
+  // pick the most visible intersecting section
+  let best=null, bestRatio=0;
+  entries.forEach(e=>{
+    if(e.isIntersecting && e.intersectionRatio > bestRatio){
+      best=e.target.id; bestRatio=e.intersectionRatio;
+    }
+  });
+  if(best){
+    navBtns.forEach(btn=> btn.classList.toggle('active', btn.dataset.target===best));
+  }
+}, {root: snapEl, threshold: [0.4, 0.6, 0.8]});
+sections.forEach(s=> s && obs.observe(s));
+window.addEventListener('load', ()=>{ if(snapEl) snapEl.scrollTop=0; navBtns.forEach((b,i)=> b.classList.toggle('active', i===0)); });
+// keyboard 1-4
+document.addEventListener('keydown', e=>{
+  if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.tagName==='SELECT') return;
+  const n=parseInt(e.key,10);
+  if(n>=1 && n<=4){
+    const id=['sec-models','sec-config','sec-benchmark','sec-audit'][n-1];
+    document.getElementById(id)?.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+});
+
+async function jget(url){ const r=await fetch(url); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+async function jpost(url, body){ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+
+// ---------- BENCHMARK ----------
+async function loadBenchMeta(){
+  try{
+    const d=await jget('/api/models/downloaded');
+    const sel=$('#benchModel'); sel.innerHTML='';
+    if(!d.models.length){
+      const o=document.createElement('option'); o.textContent='No downloaded models — set via Config'; o.value=''; sel.appendChild(o);
+      $('#benchModelHint').textContent='Tip: import local weights or download via Model Search';
+    } else {
+      d.models.forEach(m=>{ const o=document.createElement('option'); o.value=m.path; o.textContent=`${m.name} | ${m.path}`; sel.appendChild(o); });
+      $('#benchModelHint').textContent=d.models.length+' model(s) found';
+    }
+  }catch(e){ $('#benchModelHint').textContent='Failed to list models: '+e.message }
+  const bankSel=$('#benchBank'); bankSel.innerHTML='';
+  const banks=['data/test_bank.json','data/test_bank.example.json'];
+  banks.forEach(b=>{ const o=document.createElement('option'); o.value=b; o.textContent=b; bankSel.appendChild(o); });
+  const o=document.createElement('option'); o.value='__custom__'; o.textContent='Custom…'; bankSel.appendChild(o);
+}
+$('#benchBank').addEventListener('change',()=>{
+  if($('#benchBank').value==='__custom__'){
+    const v=prompt('Enter relative path (e.g. data/my_bank.json)'); if(v) { const opt=document.createElement('option'); opt.value=v; opt.textContent=v; opt.selected=true; $('#benchBank').insertBefore(opt, $('#benchBank').lastChild); }
+  }
+});
+$('#btnServerStart').addEventListener('click', async()=>{
+  const mp=$('#benchModel').value;
+  if(!mp){ alert('Select a model or set model in Config first'); return; }
+  const port=parseInt($('#benchPort').value||'8000');
+  $('#benchHint').textContent='Starting server…';
+  try{ await jpost('/api/server/start',{model_path:mp, port}); $('#benchHint').textContent='Server start requested'; }catch(e){ $('#benchHint').textContent='Start failed: '+e.message }
+});
+$('#btnServerStop').addEventListener('click', async()=>{
+  try{ await jpost('/api/server/stop',{}); $('#benchHint').textContent='Server stopped'; }catch(e){ $('#benchHint').textContent=e.message }
+});
+$('#btnQuickRun').addEventListener('click', async()=>{
+  const port=parseInt($('#benchPort').value||'8000');
+  const mp=$('#benchModel').value;
+  const bank=$('#benchBank').value;
+  if(bank==='__custom__'){ alert('Pick a valid bank'); return; }
+  try{
+    const s=await jget('/api/server/status');
+    if(!s.ready){
+      if(!mp){ alert('Need model for Quick Run.'); return; }
+      $('#benchHint').textContent='Quick Run: starting server…';
+      await jpost('/api/server/start',{model_path:mp, port});
+      for(let i=0;i<45;i++){ await new Promise(r=>setTimeout(r,2000)); const ns=await jget('/api/server/status'); if(ns.ready) break; }
+    }
+    $('#benchHint').textContent='Starting benchmark…';
+    await jpost('/api/benchmark/start',{test_bank:bank});
+    startBenchPolling();
+  }catch(e){ $('#benchHint').textContent='Quick Run failed: '+e.message }
+});
+$('#btnAbort').addEventListener('click', async()=>{
+  try{ await jpost('/api/benchmark/cancel',{}); await jpost('/api/server/stop',{}); $('#benchHint').textContent='Aborted'; }catch(e){ $('#benchHint').textContent=e.message }
+});
+$('#btnPause').addEventListener('click', async()=>{
+  const t=$('#btnPause').textContent.trim();
+  try{
+    if(t==='Pause'){ await jpost('/api/benchmark/pause',{}); $('#btnPause').textContent='Resume'; }
+    else { await jpost('/api/benchmark/resume',{}); $('#btnPause').textContent='Pause'; }
+  }catch(e){ $('#benchHint').textContent=e.message }
+});
+function startBenchPolling(){
+  if(benchPollTimer) clearInterval(benchPollTimer);
+  benchPollTimer=setInterval(async()=>{
+    try{
+      const b=await jget('/api/benchmark/status');
+      const p=b.progress||{};
+      $('#kStatus').textContent=b.status;
+      const tot=p.total_tasks??0, done=p.completed_tasks??0;
+      $('#kProg').textContent=`${done}/${tot}`;
+      const pct= tot? Math.min(done/tot*100,100):0;
+      $('#benchBarFill').style.width=pct+'%';
+      const rs=p.running_scores||{};
+      $('#kScores').textContent=`${rs.agentic_score_100??'--'} / ${rs.roleplay_score_100??'--'} / ${rs.overall_score_100??'--'}`;
+      const eta=p.eta_seconds; $('#kEta').textContent= (typeof eta==='number' && eta<60000? Math.round(eta)+'s':'—');
+      const logs=b.live_log||[];
+      const compact = $('#logCompact')?.checked;
+      $('#logModeHint').textContent = compact ? 'Compact' : 'Verbose';
+      if(logs.length){
+        let html=''; for(const e of logs.slice(-80)){
+          if(e.type==='task_start') html+=`<div style="color:#6BCB77">▸ [${e.module}] ${e.task_id}</div>`;
+          else if(e.type==='task_done') html+=`<div style="color:#64748b;margin-left:1rem">✓ ${e.task_id} score: ${e.score||''}</div>`;
+          else if(e.type==='response'){ if(compact) continue; html+=`<div style="color:#a0a0b8;margin-left:1rem">${(e.turn?'[turn '+e.turn+'] ':'')+(e.text||'').slice(0,120)}</div>`; }
+          else if(e.type==='info') html+=`<div style="color:#6B7094;margin-left:1rem">ℹ ${e.text||''}</div>`;
+        }
+        if(!html) html='<div class="small muted">Compact mode hides responses — toggle off to see turns.</div>';
+        $('#benchLog').innerHTML=html; $('#benchLog').scrollTop=$('#benchLog').scrollHeight;
+      }
+      if(['completed','cancelled'].includes(b.status)) loadRuns();
+      try{ const slog=await jget('/api/server/logs?lines=60'); $('#srvLog').textContent=slog.logs||''; }catch(e){}
+    }catch(e){}
+  }, 1800);
+}
+startBenchPolling();
+$('#logCompact')?.addEventListener('change', ()=>{ /* next poll will re-render */ });
+$('#btnClearLog')?.addEventListener('click', ()=>{ $('#benchLog').innerHTML='No live log yet.'; });
+// hero leaderboard preview — compact, only 3 medals
+async function loadHeroBoard(){
+  try{
+    const d=await jget('/api/leaderboard');
+    const runs=(d.runs||[]).sort((a,b)=>b.overall-a.overall).slice(0,3);
+    const box=$('#heroBoard');
+    if(!runs.length){ box.innerHTML='<span class="small muted">No runs yet</span>'; return; }
+    box.innerHTML='';
+    runs.forEach((r,i)=>{
+      const medal=['🥇','🥈','🥉'][i]||'•';
+      const row=document.createElement('div'); row.style.display='flex'; row.style.justifyContent='space-between'; row.style.alignItems='center'; row.style.padding='4px 6px'; row.style.background='rgba(255,255,255,0.03)'; row.style.border='1px solid rgba(207,138,184,0.08)'; row.style.borderRadius='8px';
+      row.innerHTML=`<span style="display:flex;gap:6px;align-items:center"><span style="font-size:11px">${medal}</span><span style="font-weight:700;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${r.model_name.split('/').slice(-2).join('/')}</span></span><span class="badge badge-ok" style="padding:2px 6px;font-size:10px">${r.overall.toFixed(1)}</span>`;
+      box.appendChild(row);
+    });
+  }catch(e){ const b=$('#heroBoard'); if(b) b.innerHTML='<span class="small muted">Preview unavailable</span>'; }
+}
+loadHeroBoard();
+async function loadRuns(){
+  try{
+    const d=await jget('/api/runs');
+    const sel=$('#pastRunPick'); sel.innerHTML='';
+    if(!d.runs.length){ sel.innerHTML='<option>No runs</option>'; return; }
+    d.runs.forEach(r=>{
+      const o=document.createElement('option'); o.value=r.run_id; o.textContent=`${r.run_id} — ${r.model_name.split('/').slice(-2).join('/')} — ${r.overall.toFixed(1)}`; sel.appendChild(o);
+    });
+    sel.onchange=()=> showRun(sel.value);
+    if(d.runs[0]) showRun(d.runs[0].run_id);
+  }catch(e){}
+}
+async function showRun(runId){
+  try{
+    const p=await jget('/api/runs/'+runId);
+    const summ=p.summary||{}; const sc=summ.scores||{}; const perf=summ.performance||{};
+    $('#runSummary').innerHTML=`
+      <div class="kpi"><span class="k">Overall</span><span class="v">${(sc.overall_score_100??0).toFixed(1)}</span></div>
+      <div class="kpi"><span class="k">Agentic</span><span class="v">${(sc.agentic_score_100??0).toFixed(1)}</span></div>
+      <div class="kpi"><span class="k">Roleplay</span><span class="v">${(sc.roleplay_score_100??0).toFixed(1)}</span></div>
+      <div class="kpi"><span class="k">Latency</span><span class="v">${(perf.overall?.avg_time_seconds??0).toFixed(2)}s</span></div>`;
+    const rows=[];
+    (p.agentic||[]).forEach(it=> rows.push({module:'agentic', task_id:it.task_id, score:it.metrics?.score_100??it.score_100??0, triage: it.requires_review||it.requires_review_hint, prompt:it.goal, response:it.final_answer}));
+    (p.roleplay||[]).forEach(it=> rows.push({module:'roleplay', task_id:it.task_id, score:it.score_100??0, triage: it.requires_review||it.triage?.requires_review, prompt:(it.transcript||[]).map(t=>t.user).join('\n'), response:(it.transcript||[]).map(t=>t.assistant).join('\n')}));
+    const tbody=$('#runTable tbody'); tbody.innerHTML='';
+    rows.forEach(r=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${r.module}</td><td>${r.task_id}</td><td>${Number(r.score).toFixed(1)}</td><td>${r.triage?'<span class="badge badge-warn">flag</span>':'<span class="badge badge-ok">clean</span>'}</td>`;
+      tr.style.cursor='pointer'; tr.addEventListener('click',()=>{
+        $('#runDetail').innerHTML=`<details open><summary>${r.module} · ${r.task_id} — ${Number(r.score).toFixed(1)}</summary><div class="small"><b>Prompt</b><pre class="log">${(r.prompt||'').slice(0,1200)}</pre><b>Response</b><pre class="log">${(r.response||'').slice(0,2000)}</pre></div></details>`;
+      });
+      tbody.appendChild(tr);
+    });
+    $('#btnDlCsv').href='/api/runs/'+runId;
+  }catch(e){ $('#runSummary').textContent='Failed: '+e.message }
+}
+$('#btnRefreshRuns').addEventListener('click', loadRuns);
+loadBenchMeta(); loadRuns();
+
+// ---------- MODELS — capped + paginated 40/60 split ----------
+let hfPage=0;
+function hfPageSize(){ return parseInt($('#hfLimit')?.value||'10',10); }
+function renderHfTable(){
+  const tb=$('#hfTable tbody'); tb.innerHTML='';
+  const size=hfPageSize();
+  const start=hfPage*size;
+  const slice=hfResults.slice(start, start+size);
+  slice.forEach((it,i)=>{
+    const idx=start+i+1;
+    const tr=document.createElement('tr'); tr.style.cursor='pointer';
+    tr.innerHTML=`<td>${idx}</td><td>${it.id}</td><td>${it.author||''}</td><td>${it.downloads||0}</td>`;
+    tr.addEventListener('click',()=>{
+      $('#dlRepo').value=it.id;
+      fetch('/api/models/downloaded/files?repo_id='+encodeURIComponent(it.id)).then(r=>r.json()).then(f=>{
+        const sel=$('#dlFileSel'); sel.innerHTML='';
+        (f.ggufs||[]).forEach(g=>{ const o=document.createElement('option'); o.value=g; o.textContent=g; sel.appendChild(o); });
+        if(f.ggufs && f.ggufs.length){ sel.style.display=''; $('#dlFile').style.display='none'; $('#dlFileLabel').textContent='File (GGUF)'; }
+      }).catch(()=>{});
+    });
+    tb.appendChild(tr);
+  });
+  const total=hfResults.length;
+  const pages=Math.ceil(total/size)||1;
+  $('#hfSearchHint').textContent=`${total} results — page ${hfPage+1}/${pages} (showing ${slice.length})`;
+  $('#hfSearchMeta').textContent= total ? `${total} total, ${size} per page` : '';
+  $('#btnHfPrev').disabled = hfPage===0;
+  $('#btnHfNext').disabled = (hfPage+1)*size >= total;
+}
+$('#btnHfSearch').addEventListener('click', async()=>{
+  const q=$('#hfQuery').value.trim(); if(!q) return;
+  $('#hfSearchHint').textContent='Searching…'; $('#hfTable tbody').innerHTML=''; hfPage=0;
+  try{
+    const limit=30; // fetch 30, show 10 per page (cap at 10)
+    const d=await jget('/api/models/search?q='+encodeURIComponent(q)+'&limit='+limit);
+    hfResults=d.results||[];
+    // cap to 40 already, but respect user selected limit for page size
+    renderHfTable();
+    if(d.errors&&d.errors.length) $('#hfSearchHint').textContent += ' ('+d.errors.join('; ')+')';
+  }catch(e){ $('#hfSearchHint').textContent='Search failed: '+e.message }
+});
+$('#hfLimit').addEventListener('change',()=>{ hfPage=0; renderHfTable(); });
+$('#btnHfPrev').addEventListener('click',()=>{ if(hfPage>0){ hfPage--; renderHfTable(); }});
+$('#btnHfNext').addEventListener('click',()=>{ const size=hfPageSize(); if((hfPage+1)*size < hfResults.length){ hfPage++; renderHfTable(); }});
+$('#dlMode').addEventListener('change',()=>{
+  const m=$('#dlMode').value;
+  if(m==='Single File'){ $('#btnDlFile').style.display=''; $('#btnDlSnap').style.display='none'; $('#dlFileLabel').textContent='Filename'; }
+  else { $('#btnDlFile').style.display='none'; $('#btnDlSnap').style.display=''; $('#dlFileLabel').textContent='Model ID (repo)'; }
+});
+$('#btnDlFile').addEventListener('click', async()=>{
+  const repo=$('#dlRepo').value.trim(); const rev=$('#dlRev').value.trim()||null;
+  const sel=$('#dlFileSel'); const file= sel.style.display!== 'none' && sel.value ? sel.value : $('#dlFile').value.trim();
+  if(!repo||!file){ alert('Repo and file required'); return; }
+  $('#dlHint').textContent='Starting download…';
+  try{ await jpost('/api/models/download/file',{repo_id:repo, filename:file, revision:rev}); $('#dlHint').textContent='Downloading…'; startDlPolling(); }catch(e){ $('#dlHint').textContent='Failed: '+e.message }
+});
+$('#btnDlSnap').addEventListener('click', async()=>{
+  const repo=$('#dlRepo').value.trim(); const rev=$('#dlRev').value.trim()||null;
+  if(!repo){ alert('Repo required'); return; }
+  try{ await jpost('/api/models/download/snapshot',{model_id:repo, revision:rev}); startDlPolling(); }catch(e){ $('#dlHint').textContent='Failed: '+e.message }
+});
+function startDlPolling(){
+  $('#dlProgress').style.display='';
+  if(dlPollTimer) clearInterval(dlPollTimer);
+  dlPollTimer=setInterval(async()=>{
+    try{
+      const s=await jget('/api/models/download/status');
+      const p=s.progress||{}; const pct=p.progress_pct||0;
+      $('#dlLabel').textContent=s.label||''; $('#dlFill').style.width=pct+'%';
+      $('#dlStats').textContent= p.downloaded_bytes!=null? `${(p.downloaded_bytes/1024/1024).toFixed(1)}MB / ${(p.total_bytes/1024/1024).toFixed(1)}MB`:'';
+      $('#dlSpeed').textContent= p.speed_bytes_per_sec? `${(p.speed_bytes_per_sec/1024/1024).toFixed(1)} MB/s`:'';
+      $('#dlEta').textContent= p.eta_seconds? `ETA ${Math.round(p.eta_seconds)}s`:'';
+      $('#dlErr').textContent=p.error||'';
+      if(p.finished){ $('#dlHint').textContent='Download complete'; clearInterval(dlPollTimer); loadDownloaded(); }
+      if(p.error){ clearInterval(dlPollTimer); }
+    }catch(e){}
+  }, 900);
+}
+async function loadDownloaded(){
+  try{
+    const d=await jget('/api/models/downloaded');
+    const sel=$('#dlModelPick'); sel.innerHTML='';
+    d.models.forEach(m=>{ const o=document.createElement('option'); o.value=m.path; o.textContent=`${m.name} | ${m.path}`; sel.appendChild(o); });
+    updateDlCmd();
+    sel.onchange=updateDlCmd;
+  }catch(e){}
+}
+function updateDlCmd(){
+  const sel=$('#dlModelPick'); const port=$('#dlPort2').value||'8000';
+  if(!sel.value) return; const path=sel.value; const backend= path.endsWith('.gguf')?'llama.cpp':'vllm'; const cmd= backend==='llama.cpp'? `python -m llama_cpp.server --model ${path} --host 0.0.0.0 --port ${port}`: `vllm serve ${path} --host 0.0.0.0 --port ${port}`; $('#dlCmd').textContent=cmd+`  # backend: ${backend}`;
+}
+$('#dlPort2').addEventListener('input', updateDlCmd);
+$('#btnUseConfig').addEventListener('click', async()=>{
+  const path=$('#dlModelPick').value; const port=parseInt($('#dlPort2').value||'8000');
+  try{ await jpost('/api/models/use-in-config',{path, port}); alert('config.yaml updated'); loadConfigVis(); }catch(e){ alert('Failed: '+e.message) }
+});
+loadDownloaded();
+// --- Import local weights ---
+let browseCwd = "";
+async function refreshBrowse(path){
+  const box=$('#browseBox'); box.style.display='';
+  try{
+    const data=await jget('/api/models/import/browse?path='+encodeURIComponent(path||'')+'&limit=80');
+    browseCwd=data.cwd;
+    $('#importPath').value=browseCwd;
+    box.innerHTML='';
+    // header
+    const hdr=document.createElement('div'); hdr.className='browse-row'; hdr.style.fontWeight='800'; hdr.style.background='rgba(207,138,184,0.08)';
+    hdr.innerHTML=`<span style="flex:1">${data.cwd}</span><span class="small muted">${data.entries.length} items</span>`;
+    box.appendChild(hdr);
+    data.entries.forEach(ent=>{
+      const row=document.createElement('div'); row.className='browse-row';
+      const icon = ent.is_dir ? '📁' : '📄';
+      row.innerHTML=`<span>${icon}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ent.name}</span><span class="small muted" style="font-size:10px">${ent.is_dir?'dir':(ent.size/1024/1024).toFixed(1)+' MB'}</span>`;
+      row.addEventListener('click',()=>{
+        if(ent.is_dir){
+          refreshBrowse(ent.path);
+        } else {
+          $('#importPath').value=ent.path;
+          // auto alias
+          if(!$('#importAlias').value) $('#importAlias').value=ent.name;
+        }
+      });
+      row.addEventListener('dblclick',()=>{
+        if(ent.is_dir) refreshBrowse(ent.path);
+      });
+      box.appendChild(row);
+    });
+  }catch(e){ box.innerHTML='<div class="small" style="padding:8px;color:var(--bad)">Browse failed: '+e.message+'</div>'; }
+}
+$('#btnImportBrowse').addEventListener('click',()=> refreshBrowse($('#importPath').value||""));
+$('#btnImport').addEventListener('click', async()=>{
+  const path=$('#importPath').value.trim(); if(!path) return alert('Enter a path');
+  const alias=$('#importAlias').value.trim()||undefined;
+  const strategy=$('#importStrategy').value;
+  $('#importHint').textContent='Importing…';
+  try{
+    const r=await jpost('/api/models/import',{path, alias, strategy});
+    $('#importHint').textContent='Imported → '+r.alias+' ('+r.mode+')';
+    loadDownloaded(); loadBenchMeta();
+  }catch(e){ $('#importHint').textContent='Failed: '+e.message }
+});
+
+// Leaderboard moved to /chart — hero preview uses loadHeroBoard() only
+
+// ---------- AUDIT — segmented ----------
+function renderAuditList(items){
+  const list=$('#auditList');
+  const sel=$('#auditPick');
+  list.innerHTML=''; sel.innerHTML='';
+  const q=($('#auditSearch').value||'').toLowerCase().trim();
+  let filtered=items;
+  if(q){
+    filtered=items.filter(it=> (it.task_id||'').toLowerCase().includes(q) || (it.model_name||'').toLowerCase().includes(q) || (it.kind||'').toLowerCase().includes(q));
+  }
+  $('#auditQueueMeta').textContent = filtered.length + ' / ' + items.length;
+  if(!filtered.length){
+    list.innerHTML='<div class="empty">No items match filter.</div>';
+    $('#auditDetail').innerHTML='Select an item from the queue.';
+    $('#auditJudge').innerHTML='';
+    return;
+  }
+  filtered.forEach((it, idx)=>{
+    const src= it.forced_review?'forced': it.requires_review?'flag': 'clean';
+    const badge = src==='forced'?'badge-bad': src==='flag'?'badge-warn':'badge-ok';
+    const row=document.createElement('div');
+    row.className='listbox-row'+(idx===0?' selected':'');
+    row.dataset.key= JSON.stringify({run_id:it.run_id, kind:it.kind, task_id:it.task_id});
+    row.innerHTML=`
+      <span class="kind">${it.kind}</span>
+      <span class="task" title="${it.task_id}">${it.task_id}</span>
+      <span class="badge ${badge}" style="font-size:9px;padding:2px 6px">${src}</span>
+      <span class="meta" title="${it.model_name||''}">${(it.model_name||'').split('/').slice(-1)[0].slice(0,16)}</span>
+      <span class="meta">${Math.round(it.score_100 ?? it.metrics?.score_100 ?? it.judge_output?.aggregate_score ?? 0)}</span>
+    `;
+    row._item=it;
+    row.addEventListener('click',()=>{
+      $$('#auditList .listbox-row').forEach(r=>r.classList.remove('selected'));
+      row.classList.add('selected');
+      selectedAuditKey=row.dataset.key;
+      renderAuditDetail(it);
+      sel.innerHTML=`<option selected value='${row.dataset.key}'>sel</option>`;
+      const opt=sel.options[0]; if(opt) opt._item=it;
+    });
+    list.appendChild(row);
+    const o=document.createElement('option'); o.value=row.dataset.key; o.textContent=`${it.kind} | ${it.task_id} | ${src} | ${it.model_name||''}`; o._item=it; sel.appendChild(o);
+  });
+  const first=list.querySelector('.listbox-row');
+  if(first){
+    selectedAuditKey=first.dataset.key;
+    renderAuditDetail(first._item);
+  }
+}
+function renderAuditDetail(it){
+  $('#auditScore').value= Math.round(it.score_100|| it.metrics?.score_100 || it.judge_output?.aggregate_score || 0);
+  $('#auditNotes').value= it.judge_output?.human_notes||'';
+  let html='';
+  if(it.kind==='agentic'){
+    html+=`<div><div style="font-weight:800;margin-bottom:4px">Goal</div><pre class="log" style="max-height:140px">${it.goal||''}</pre><div style="font-weight:800;margin:8px 0 4px">Final Answer</div><pre class="log" style="max-height:140px">${it.final_answer||'(no answer)'}</pre><div style="margin-top:8px;font-weight:800">Metrics</div><pre class="log" style="max-height:160px">${JSON.stringify(it.metrics||{},null,2)}</pre></div>`;
+  } else {
+    html+='<div>';
+    (it.transcript||[]).forEach(t=>{ html+=`<div style="margin:6px 0"><div style="color:var(--muted);font-size:10px;letter-spacing:0.06em;text-transform:uppercase">User</div><div>${t.user||''}</div><div style="color:var(--p1);font-size:10px;margin-top:4px;letter-spacing:0.06em;text-transform:uppercase">Assistant</div><div style="background:rgba(207,138,184,0.06);border:1px solid rgba(207,138,184,0.12);border-radius:8px;padding:8px;margin-top:4px">${t.assistant||''}</div></div>`; });
+    html+='</div>';
+  }
+  $('#auditDetail').innerHTML=html;
+  const jo=it.judge_output||{}; let jhtml=`<div style="font-weight:800">Judge</div><div class="row" style="margin-top:4px"><span class="badge ${jo.aggregate_score!=null?'badge-ok':'badge-warn'}">Score ${jo.aggregate_score??it.score_100??'—'}</span><span class="small muted">conf ${jo.aggregate_confidence??'—'}</span></div>`;
+  if(jo.rationale) jhtml+=`<div style="margin-top:8px;font-size:13px;line-height:1.5">${jo.rationale}</div>`;
+  if(jo.rubric_breakdown || jo.aggregate_breakdown) jhtml+=`<pre class="log" style="margin-top:8px;max-height:140px">${JSON.stringify(jo.rubric_breakdown||jo.aggregate_breakdown||{},null,2)}</pre>`;
+  if(it.triage) jhtml+=`<div class="small muted" style="margin-top:6px">Triggers: ${(it.triage.triggers||[]).join(', ')||'—'}</div>`;
+  if(it.triage && it.triage.flags) jhtml+=`<div class="small muted">Flags: ${(it.triage.flags||[]).join(', ')||'—'}</div>`;
+  $('#auditJudge').innerHTML=jhtml;
+}
+async function loadAudit(){
+  try{
+    const flaggedP=jget('/api/audit/flagged?show_all=false');
+    const allP=jget('/api/audit/flagged?show_all=true');
+    const [flagged, all]=await Promise.all([flaggedP, allP]);
+    const forcedCount = flagged.items.filter(i=>i.forced_review).length;
+    $('#segFlaggedCount').textContent=flagged.total;
+    $('#segAllCount').textContent=all.total;
+    $('#segForcedCount').textContent=forcedCount;
+    $('#auditHint').textContent= auditSeg==='flagged'? flagged.total+' flagged' : auditSeg==='forced'? forcedCount+' forced' : all.total+' total';
+    $('#auditHint').className='badge '+(flagged.total? 'badge-warn':'badge-ok');
+    let items;
+    if(auditSeg==='flagged') items=flagged.items;
+    else if(auditSeg==='forced') items=flagged.items.filter(i=>i.forced_review);
+    else items=all.items;
+    auditAllItems=items;
+    renderAuditList(auditAllItems);
+  }catch(e){ $('#auditHint').textContent='Failed: '+e.message; $('#auditHint').className='badge badge-bad'; }
+}
+$$('#auditSeg button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    $$('#auditSeg button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    auditSeg=btn.dataset.seg;
+    loadAudit();
+  });
+});
+$('#auditSearch').addEventListener('input',()=>{
+  if(auditAllItems) renderAuditList(auditAllItems);
+});
+$('#auditShowAll').addEventListener('change',()=>{ auditSeg=$('#auditShowAll').checked?'all':'flagged'; loadAudit(); });
+$('#btnAuditSave').addEventListener('click', async()=>{
+  const key=selectedAuditKey || ($('#auditPick').value);
+  if(!key) return alert('Pick an item');
+  let meta; try{ meta=JSON.parse(key);}catch(e){ return alert('Pick an item'); }
+  const score=parseFloat($('#auditScore').value); const notes=$('#auditNotes').value;
+  if(Number.isNaN(score)) return alert('Score must be 0-100');
+  try{ await jpost('/api/audit/resolve',{run_id:meta.run_id, task_type:meta.kind, task_id:meta.task_id, human_score:score, notes}); alert('Saved'); loadAudit(); loadRuns(); }catch(e){ alert('Failed: '+e.message) }
+});
+$('#btnBulkAccept').addEventListener('click', async()=>{
+  if(!confirm(`Apply judge scores to all ${auditSeg} items in current filter?`)) return;
+  try{ const r=await jpost('/api/audit/bulk',{action:'accept'}); alert(`Resolved ${r.resolved}`); loadAudit(); }catch(e){ alert(e.message) }
+});
+$('#btnBulkResolve').addEventListener('click', async()=>{
+  if(!confirm(`Resolve all ${auditSeg} items as clean?`)) return;
+  try{ const r=await jpost('/api/audit/bulk',{action:'resolve'}); alert(`Resolved ${r.resolved}`); loadAudit(); }catch(e){ alert(e.message) }
+});
+
+// ---------- CONFIG — expandable + import/export ----------
+let cfgObj=null, cfgRaw="";
+async function loadConfigVis(){
+  try{
+    const d=await jget('/api/config');
+    cfgRaw=d.raw_yaml||''; cfgObj=d.config||{};
+    $('#cfgText').value=cfgRaw;
+    renderCfgGroups(cfgObj);
+  }catch(e){ $('#cfgHint').textContent=e.message }
+}
+function renderCfgGroups(cfg){
+  const root=$('#cfgGroups'); root.innerHTML='';
+  const showAdv = $('#cfgAdvanced')?.checked;
+  const groups=[
+    {key:'run', label:'Run', desc:'Seeds, output, steps', icon:'⚙', adv:false},
+    {key:'model_under_test', label:'Model Under Test', desc:'Path, endpoint, chat template', icon:'🧠', adv:false},
+    {key:'judges', label:'Judges', desc:'OpenRouter judge models', icon:'⚖', adv:false},
+    {key:'agentic', label:'Agentic', desc:'Tool weights, JSON handling', icon:'🛠', adv:false},
+    {key:'roleplay', label:'Roleplay', desc:'Persona & rubric', icon:'🎭', adv:false},
+    {key:'triage', label:'Triage', desc:'Flag thresholds & boilerplate', icon:'🚩', adv:true},
+    {key:'calibration', label:'Calibration', desc:'Human feedback few-shot', icon:'🎯', adv:true},
+    {key:'web', label:'Web', desc:'Host/port for FastAPI', icon:'🌐', adv:true},
+  ];
+  let hiddenAdv=0;
+  groups.forEach(g=>{
+    const val=cfg[g.key];
+    if(val===undefined) return;
+    const isAdv = !!g.adv;
+    if(isAdv && !showAdv) hiddenAdv++;
+    const det=document.createElement('details'); det.className='cfg-group'; det.open = false;
+    if(isAdv) det.dataset.adv = "1";
+    const sum=document.createElement('summary');
+    sum.innerHTML=`<span class="caret">▶</span> <span>${g.icon}</span> <span>${g.label}</span> <span class="small muted" style="margin-left:8px">${g.desc}</span> <span class="small muted" style="margin-left:auto">${Array.isArray(val)? val.length+' items' : typeof val==='object'? Object.keys(val).length+' keys' : String(val).slice(0,24)}</span>`;
+    det.appendChild(sum);
+    const fields=document.createElement('div'); fields.className='cfg-fields';
+    if(Array.isArray(val)){
+      if(g.key==='judges' && val.length){
+        const j=val[0]||{};
+        // dropdown for model + API key blur
+        const freeModels=[
+          'google/gemma-4-31b-it:free',
+          'google/gemma-4-26b-a4b-it:free',
+          'nvidia/nemotron-3-ultra-550b-a55b:free',
+          'nvidia/nemotron-3-super-120b-a12b:free',
+          'openai/gpt-oss-20b:free',
+          'nvidia/nemotron-3-nano-30b-a3b:free',
+          'openrouter/free'
+        ];
+        const rowM=document.createElement('div'); rowM.className='cfg-row'; rowM.style.gridColumn='1 / -1';
+        const labM=document.createElement('label'); labM.textContent='model (dropdown)';
+        const sel=document.createElement('select');
+        freeModels.forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; if(m===j.model) o.selected=true; sel.appendChild(o); });
+        // allow custom
+        const isCustom=!freeModels.includes(j.model);
+        const optC=document.createElement('option'); optC.value='__custom__'; optC.textContent='Custom…'; if(isCustom) optC.selected=true; sel.appendChild(optC);
+        const customInp=document.createElement('input'); customInp.placeholder='custom model id'; customInp.style.display=isCustom?'':'none'; customInp.value=isCustom?j.model:'';
+        sel.addEventListener('change',()=>{
+          if(sel.value==='__custom__'){ customInp.style.display=''; }
+          else { customInp.style.display='none'; cfg[g.key][0].model=sel.value; syncCfgRaw(); }
+        });
+        customInp.addEventListener('change',()=>{ cfg[g.key][0].model=customInp.value.trim()||sel.value; syncCfgRaw(); });
+        const wrap=document.createElement('div'); wrap.style.display='flex'; wrap.style.gap='6px'; wrap.appendChild(sel); wrap.appendChild(customInp);
+        rowM.appendChild(labM); rowM.appendChild(wrap); fields.appendChild(rowM);
+        // API key with auto-blur
+        const rowK=document.createElement('div'); rowK.className='cfg-row'; rowK.style.gridColumn='1 / -1';
+        const labK=document.createElement('label'); labK.textContent='OPENROUTER_API_KEY (paste, auto-blur)';
+        const inpK=document.createElement('input'); inpK.type='password'; inpK.placeholder='sk-or-… (stored in .env, not config)'; inpK.autocomplete='off';
+        // try to show existing env key length hint
+        inpK.addEventListener('focus',()=>{ inpK.type='text'; });
+        inpK.addEventListener('blur',()=>{ inpK.type='password'; });
+        // store in separate endpoint? For now store in config as api_key (blurred)
+        inpK.addEventListener('change',()=>{
+          const v=inpK.value.trim();
+          if(v){
+            // store directly as api_key (will be written to config - user warned)
+            cfg[g.key][0].api_key = v;
+            cfg[g.key][0].api_key_env = undefined;
+            syncCfgRaw();
+            inpK.value='•'.repeat(Math.min(v.length, 16));
+            setTimeout(()=>{ inpK.type='password'; }, 800);
+          }
+        });
+        const hint=document.createElement('div'); hint.className='small muted'; hint.style.gridColumn='1 / -1'; hint.textContent='Paste key → auto-blur. Prefer setting OPENROUTER_API_KEY in .env; this field writes api_key into config.yaml (gitignored via .env is safer).';
+        rowK.appendChild(labK); rowK.appendChild(inpK); fields.appendChild(rowK); fields.appendChild(hint);
+        // show rest of judge fields as small muted json
+        const rest=document.createElement('pre'); rest.className='log'; rest.style.maxHeight='120px'; rest.textContent=JSON.stringify(val,null,2).slice(0,800);
+        fields.appendChild(rest);
+      } else {
+        fields.innerHTML='<div class="small muted">Array — edit in Raw YAML below for arrays.</div><pre class="log">'+JSON.stringify(val,null,2).slice(0,1200)+'</pre>';
+      }
+    } else if(typeof val==='object' && val!==null){
+      Object.entries(val).forEach(([k,v])=>{
+        const row=document.createElement('div'); row.className='cfg-row';
+        const lab=document.createElement('label'); lab.textContent=k; lab.title=k;
+        const inp=document.createElement('input');
+        // Handle booleans and numbers
+        if(typeof v==='boolean'){
+          inp.type='checkbox'; inp.checked=!!v;
+          inp.onchange=()=>{ cfg[g.key][k]=inp.checked; syncCfgRaw(); };
+        } else {
+          inp.value= (typeof v==='object'? JSON.stringify(v) : String(v));
+          inp.onchange=()=>{
+            let nv=inp.value.trim();
+            // try to coerce type based on original
+            if(typeof v==='number'){ const num=Number(nv); if(!Number.isNaN(num)) nv=num; }
+            else if(typeof v==='boolean') nv = nv==='true';
+            else if(nv.startsWith('{')||nv.startsWith('[')){
+              try{ nv=JSON.parse(nv); }catch(e){}
+            }
+            cfg[g.key][k]=nv; syncCfgRaw();
+          };
+        }
+        if(typeof v!=='boolean'){
+          // placeholder for input
+        }
+        row.appendChild(lab);
+        row.appendChild(inp);
+        fields.appendChild(row);
+      });
+      // rubric special
+      if(g.key==='roleplay' && val.rubric){
+        const rub=document.createElement('div'); rub.style.gridColumn='1 / -1';
+        rub.innerHTML='<label>Rubric (weights sum to 1.0)</label><div id="rubricBox" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px"></div>';
+        fields.appendChild(rub);
+        setTimeout(()=>{
+          const box=rub.querySelector('#rubricBox');
+          Object.entries(val.rubric).forEach(([rk,rv])=>{
+            const d=document.createElement('div'); d.className='cfg-row'; d.style.gridTemplateColumns='1fr 80px';
+            d.innerHTML=`<label>${rk}</label><input data-rub="${rk}" value="${rv}" type="number" step="0.01" min="0" max="1">`;
+            box.appendChild(d);
+            d.querySelector('input').addEventListener('change',e=>{
+              const n=parseFloat(e.target.value);
+              if(!Number.isNaN(n)) cfg[g.key].rubric[rk]=n;
+              syncCfgRaw();
+            });
+          });
+        },0);
+      }
+    } else {
+      const inp=document.createElement('input'); inp.value=String(val);
+      inp.onchange=()=>{ cfg[g.key]= inp.value; syncCfgRaw(); };
+      fields.appendChild(inp);
+    }
+    if(isAdv && !showAdv){
+      det.style.opacity='0.62';
+      // keep collapsed, disable inputs visually
+      fields.querySelectorAll('input,select').forEach(el=>{ el.disabled=true; el.title='Enable Advanced to edit'; });
+      const badge=document.createElement('span'); badge.className='badge badge-warn'; badge.style.marginLeft='auto'; badge.style.fontSize='9px'; badge.textContent='Advanced';
+      sum.appendChild(badge);
+    }
+    det.appendChild(fields);
+    root.appendChild(det);
+  });
+  if(hiddenAdv>0 && !showAdv){
+    const note=document.createElement('div'); note.className='small muted'; note.style.textAlign='center'; note.style.padding='6px';
+    note.textContent=`${hiddenAdv} advanced group${hiddenAdv>1?'s':''} dimmed — enable Advanced to edit`;
+    root.appendChild(note);
+  }
+}
+document.getElementById('cfgAdvanced')?.addEventListener('change',()=> renderCfgGroups(cfgObj));
+function syncCfgRaw(){
+  try{
+    // Use json as intermediate then dump yaml-ish via simple stringify? Keep yaml dump via backend? For now update raw textarea with yaml-like JSON dump
+    // We keep cfgObj as source of truth, and regenerate yaml text via simple yaml dump client-side (basic)
+    // For now, regenerate textarea with JSON→YAML-ish via js-yaml if available, else JSON
+    // Simple: use JSON stringify as YAML is superset for our needs? Instead just update textarea with yaml dump via API? Simpler: keep textarea in sync by serializing cfgObj as YAML using a tiny helper
+    const yamlText = toYaml(cfgObj);
+    cfgRaw=yamlText;
+    $('#cfgText').value=yamlText;
+  }catch(e){}
+}
+function toYaml(obj, indent=0){
+  const pad="  ".repeat(indent);
+  let out="";
+  for(const [k,v] of Object.entries(obj)){
+    if(Array.isArray(v)){
+      out+=`${pad}${k}:\n`;
+      v.forEach(item=>{
+        if(typeof item==='object' && item!==null){
+          out+=`${pad}  - \n`;
+          for(const [ik,iv] of Object.entries(item)){
+            out+=`${pad}    ${ik}: ${typeof iv==='string' && iv.includes(':')? '"'+iv+'"' : JSON.stringify(iv)}\n`;
+          }
+        } else {
+          out+=`${pad}  - ${JSON.stringify(v)}\n`;
+        }
+      });
+    } else if(typeof v==='object' && v!==null){
+      out+=`${pad}${k}:\n`;
+      out+=toYaml(v, indent+1);
+    } else if(typeof v==='string'){
+      // quote if needed
+      const needsQuote = v.includes(':') || v.includes('#') || v.includes("'") || v.startsWith(' ');
+      out+=`${pad}${k}: ${needsQuote? JSON.stringify(v): v}\n`;
+    } else {
+      out+=`${pad}${k}: ${v}\n`;
+    }
+  }
+  return out;
+}
+$('#btnCfgExpandAll').addEventListener('click',()=> $$('#cfgGroups details').forEach(d=>d.open=true));
+$('#btnCfgCollapseAll').addEventListener('click',()=> $$('#cfgGroups details').forEach(d=>d.open=false));
+$('#btnCfgExportYaml').addEventListener('click',()=>{
+  const blob=new Blob([cfgRaw||$('#cfgText').value],{type:'text/yaml'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='config.yaml'; a.click(); URL.revokeObjectURL(url);
+});
+$('#btnCfgExportJson').addEventListener('click',()=>{
+  try{
+    const j=JSON.stringify(cfgObj||{},null,2);
+    const blob=new Blob([j],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='config.json'; a.click(); URL.revokeObjectURL(url);
+  }catch(e){ alert('Export failed: '+e.message)}
+});
+$('#cfgImportFile').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const text=await f.text();
+  try{
+    if(f.name.endsWith('.json')){
+      const obj=JSON.parse(text);
+      cfgObj=obj; cfgRaw=toYaml(obj); $('#cfgText').value=cfgRaw; renderCfgGroups(cfgObj); $('#cfgHint').textContent='Imported JSON — click Save & Validate to apply';
+    } else {
+      $('#cfgText').value=text;
+      cfgRaw=text; $('#cfgHint').textContent='Imported YAML — click Save & Validate to apply';
+      // parse will be validated on Save; we do not call a dry endpoint
+    }
+  }catch(err){ alert('Import failed: '+err.message)}
+  e.target.value='';
+});
+$('#cfgText').addEventListener('change',()=>{
+  cfgRaw=$('#cfgText').value;
+});
+async function loadConfigVis(){
+  try{
+    const d=await jget('/api/config');
+    cfgRaw=d.raw_yaml||''; cfgObj=d.config||{};
+    $('#cfgText').value=cfgRaw;
+    renderCfgGroups(cfgObj);
+  }catch(e){ $('#cfgHint').textContent=e.message }
+}
+// keep loadConfig alias for older callers
+async function loadConfig(){ return loadConfigVis(); }
+$('#btnCfgReload').addEventListener('click', loadConfigVis);
+$('#btnCfgSave').addEventListener('click', async()=>{
+  const yamlText=$('#cfgText').value;
+  $('#cfgHint').textContent='Saving…';
+  try{ await fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({yaml_text:yamlText})}).then(async r=>{ if(!r.ok) throw new Error(await r.text()); return r.json(); }); $('#cfgHint').textContent='Saved ✓'; loadConfigVis(); }catch(e){ $('#cfgHint').textContent='Failed: '+e.message; $('#cfgVal').style.display=''; $('#cfgVal').textContent=e.message }
+});
+loadConfigVis();
+</script>
+</body>
+</html>

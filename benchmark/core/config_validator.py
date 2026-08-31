@@ -89,6 +89,7 @@ class TriageConfig(BaseModel):
     """Configuration for triage engine."""
     discrepancy_threshold: float = Field(default=30.0, ge=0.0, le=100.0)
     random_spotcheck_pct: float = Field(default=0.1, ge=0.0, le=1.0)
+    low_confidence_threshold: float = Field(default=0.55, ge=0.0, le=1.0)
     boilerplate_strings: List[str] = []
 
 
@@ -107,6 +108,13 @@ class RunConfig(BaseModel):
     env_file: str = ".env"
 
 
+class WebConfig(BaseModel):
+    """Configuration for FastAPI web UI (optional)."""
+    host: str = "127.0.0.1"
+    port: int = Field(default=8001, ge=1024, le=65535)
+    cors_allow_origins: List[str] = Field(default_factory=lambda: ["*"])
+
+
 class BenchmarkConfig(BaseModel):
     """Root configuration for the benchmark suite."""
     run: RunConfig
@@ -116,6 +124,7 @@ class BenchmarkConfig(BaseModel):
     roleplay: RoleplayConfig
     triage: TriageConfig = TriageConfig()
     calibration: CalibrationConfig = CalibrationConfig()
+    web: WebConfig = WebConfig()
 
 
 def load_and_validate_config(config_path: Path) -> BenchmarkConfig:

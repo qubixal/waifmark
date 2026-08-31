@@ -99,15 +99,35 @@ def search_hf_models(query: str, limit: int = 20) -> List[Dict[str, Any]]:
 
     api = HfApi(token=os.environ.get("HF_TOKEN") or None)
     results: List[Dict[str, Any]] = []
-    for model in api.search_models(
-        query=query, limit=limit, sort="downloads", direction=-1
-    ):
+    # huggingface_hub >=0.24 renamed search_models -> list_models
+    # Use list_models(search=...) with sort by downloads.
+    kwargs: Dict[str, Any] = {"search": query, "limit": limit, "sort": "downloads"}
+    # Try new API first, fall back to old for backward compat
+    try:
+        models_iter = api.list_models(**kwargs)
+    except TypeError:
+        # Old versions used `search_models(query=..., ...)`
+        try:
+            models_iter = api.search_models(query=query, limit=limit, sort="downloads", direction=-1)  # type: ignore[attr-defined]
+        except Exception:
+            models_iter = api.list_models(search=query, limit=limit)  # type: ignore
+    for model in models_iter:
+        # Resolve author from tags or id (id is "author/model")
+        model_id: str = getattr(model, "id", "")
+        author = ""
+        if "/" in model_id:
+            author = model_id.split("/")[0]
+        # huggingface_hub may expose author differently; fallback to tags
+        if not author:
+            author = getattr(model, "author", "") or ""
         results.append(
             {
-                "model_id": model.id,
+                "id": model_id,  # primary key for new app
+                "model_id": model_id,
+                "author": author,
                 "downloads": getattr(model, "downloads", 0) or 0,
                 "likes": getattr(model, "likes", 0) or 0,
-                "last_modified": str(getattr(model, "lastModified", "")),
+                "last_modified": str(getattr(model, "lastModified", "") or getattr(model, "last_modified", "")),
                 "tags": list(getattr(model, "tags", []) or []),
                 "pipeline_tag": getattr(model, "pipeline_tag", "") or "",
             }
@@ -117,6 +137,36 @@ def search_hf_models(query: str, limit: int = 20) -> List[Dict[str, Any]]:
 
 def search_hf_gguf_models(query: str, limit: int = 20) -> List[Dict[str, Any]]:
     """Search Hugging Face Hub specifically for GGUF models."""
+    # Try filtering by gguf tag via filter param, fall back to search term
+    try:
+        from huggingface_hub import HfApi
+        import os
+        api = HfApi(token=os.environ.get("HF_TOKEN") or None)
+        kwargs: Dict[str, Any] = {"search": query, "filter": "gguf", "limit": limit, "sort": "downloads"}
+        try:
+            models_iter = api.list_models(**kwargs)
+        except TypeError:
+            return search_hf_models(f"{query} gguf", limit=limit)
+        results: List[Dict[str, Any]] = []
+        for model in models_iter:
+            model_id: str = getattr(model, "id", "")
+            author = model_id.split("/")[0] if "/" in model_id else getattr(model, "author", "") or ""
+            results.append(
+                {
+                    "id": model_id,
+                    "model_id": model_id,
+                    "author": author,
+                    "downloads": getattr(model, "downloads", 0) or 0,
+                    "likes": getattr(model, "likes", 0) or 0,
+                    "last_modified": str(getattr(model, "lastModified", "") or getattr(model, "last_modified", "")),
+                    "tags": list(getattr(model, "tags", []) or []),
+                    "pipeline_tag": getattr(model, "pipeline_tag", "") or "",
+                }
+            )
+        if results:
+            return results
+    except Exception:
+        pass
     return search_hf_models(f"{query} gguf", limit=limit)
 
 

@@ -239,11 +239,25 @@ def collect_downloadable_models(models_dir: Path) -> List[Dict[str, str]]:
 
     models: List[Dict[str, str]] = []
     for item in list_downloaded_models(models_dir):
-        subdir = Path(item["path"])
-        ggufs = list(subdir.rglob("*.gguf"))
-        if ggufs:
-            for gguf in ggufs:
-                models.append({"name": f"{subdir.name}/{gguf.name}", "path": str(gguf)})
-        if (subdir / "config.json").exists():
-            models.append({"name": f"{subdir.name} (repo)", "path": str(subdir)})
+        p = Path(item["path"])
+        # Direct file (imported gguf)
+        try:
+            if p.is_file() and p.suffix.lower() == ".gguf":
+                models.append({"name": p.name, "path": str(p)})
+                continue
+        except Exception:
+            pass
+        try:
+            if p.is_dir():
+                ggufs = list(p.rglob("*.gguf"))
+                if ggufs:
+                    for gguf in ggufs:
+                        models.append({"name": f"{p.name}/{gguf.name}", "path": str(gguf)})
+                if (p / "config.json").exists():
+                    models.append({"name": f"{p.name} (repo)", "path": str(p)})
+                if not ggufs and not (p / "config.json").exists():
+                    if any(p.glob("*.safetensors")) or any(p.glob("*.bin")):
+                        models.append({"name": f"{p.name} (repo)", "path": str(p)})
+        except Exception:
+            continue
     return models

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waifmark 2 — Leaderboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+  :root{ --bg:#0F0F1A; --bg2:#161625; --card:#1A1A2E; --p1:#CF8AB8; --p2:#D158B4; --p3:#F15CCA; --ok:#6BCB77; --warn:#FECB33; --bad:#EC7A55; --muted:#6B7094; --font:'Zen Maru Gothic', sans-serif; --mono:'JetBrains Mono', monospace; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:#e0e0e0;font-family:var(--font);min-height:100vh;padding:18px;max-width:1320px;margin:0 auto}
+  a{color:var(--p1);text-decoration:none}
+  .topbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .brand{font-weight:900;letter-spacing:0.5px;background:linear-gradient(90deg,var(--p1),var(--p2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:18px}
+  .brand small{font-weight:600;letter-spacing:1px;text-transform:uppercase;color:rgba(207,138,184,0.5);-webkit-text-fill-color:rgba(207,138,184,0.5);margin-left:6px;font-size:9px}
+  .card{background:var(--card);border:1px solid rgba(207,138,184,0.12);border-radius:14px;padding:14px;box-shadow:0 4px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.03);display:flex;flex-direction:column}
+  .btn{font-family:var(--font);font-weight:800;letter-spacing:0.03em;border-radius:999px;padding:9px 14px;border:1px solid transparent;cursor:pointer;transition:all .15s;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+  .btn-primary{background:linear-gradient(135deg,var(--p2),var(--p3));color:#fff;box-shadow:0 4px 18px rgba(241,92,202,0.25)}
+  .btn-secondary{background:rgba(255,255,255,0.06);color:#e0e0e0;border-color:rgba(207,138,184,0.16)}
+  .btn-secondary:hover{background:rgba(207,138,184,0.12)}
+  .muted{color:var(--muted)}
+  .small{font-size:12px}
+  .table-wrap{flex:1;min-height:0;overflow:auto;border:1px solid rgba(207,138,184,0.12);border-radius:10px;background:rgba(255,255,255,0.01);margin-top:10px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 6px;border-bottom:1px solid rgba(207,138,184,0.12);position:sticky;top:0;background:var(--card);z-index:1}
+  td{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:top}
+  tr:hover td{background:rgba(207,138,184,0.05)}
+  .canvas-wrap{position:relative;height:42vh;min-height:320px;flex-shrink:0}
+  .badge{font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;border-radius:999px;padding:3px 7px;white-space:nowrap}
+  .badge-ok{background:rgba(107,203,119,0.14);color:var(--ok);border:1px solid rgba(107,203,119,0.25)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="btn btn-primary" style="padding:7px 14px;font-size:13px;box-shadow:0 4px 14px rgba(209,88,180,0.25)">← Back to Suite</a>
+  <div class="brand" style="margin-left:8px">Waifmark 2 <small>Leaderboard</small></div>
+  <div style="flex:1"></div>
+  <a href="/docs" target="_blank" class="small muted">API docs</a>
+</div>
+
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:20px;font-weight:900">Leaderboard</div>
+      <div class="small muted" style="letter-spacing:0.06em;text-transform:uppercase">Score vs Latency — Waifmark 1 (archived) vs Waifmark 2 (live)</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="version-toggle" id="versionToggle" style="display:flex;padding:3px;border-radius:22px;background:rgba(58,58,61,0.5);border:1px solid rgba(207,138,184,0.18)">
+        <button data-version="v1" class="active" style="font-family:var(--font);font-size:12px;font-weight:700;color:rgba(255,255,255,0.55);background:transparent;border:none;border-radius:18px;padding:7px 16px;cursor:pointer">Waifmark 1</button>
+        <button data-version="v2" style="font-family:var(--font);font-size:12px;font-weight:700;color:rgba(255,255,255,0.55);background:transparent;border:none;border-radius:18px;padding:7px 16px;cursor:pointer">Waifmark 2</button>
+      </div>
+      <button id="btnExportLb" class="btn btn-secondary" style="padding:6px 10px;font-size:12px">Export CSV</button>
+    </div>
+  </div>
+  <div id="versionNote" style="text-align:center;font-size:11px;color:rgba(207,138,184,0.45);margin-top:6px;min-height:14px"></div>
+  <div class="canvas-wrap" style="margin-top:10px"><canvas id="benchChart"></canvas></div>
+  <div id="legend" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;border-top:1px solid rgba(207,138,184,0.12);padding-top:10px"></div>
+  <div class="table-wrap"><table id="lbTable"><thead><tr><th>Model</th><th>Overall</th><th>Agentic</th><th>Roleplay</th><th>Date</th><th>#Tasks</th></tr></thead><tbody></tbody></table></div>
+</div>
+
+<script>
+async function jget(url){ const r=await fetch(url); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+let chart=null;
+let currentVersion='v1';
+let v2Runs=[], v2Chart=[];
+// Waifmark 1 archived data (from root index.html)
+const v1Data = [
+  { model: "Qwen3.5 9B Q4",          org: "QWEN", score: 86.00, time: 9.717 },
+  { model: "Qwen3-2507 (I) Q4",      org: "QWEN", score: 74.00, time: 2.485 },
+  { model: "Qwen3-2507 (I) Q8",      org: "QWEN", score: 60.67, time: 3.903 },
+  { model: "Qwen3-vl-4b Q4",         org: "QWEN", score: 42.00, time: 2.102 },
+  { model: "Qwen3-vl-8b Q4",         org: "QWEN", score: 66.83, time: 4.558 },
+  { model: "Gemma3n (I) Q4",        org: "GOOG", score: 46.17, time: 3.290 },
+  { model: "Gemma3n (I) Q8",        org: "GOOG", score: 44.50, time: 5.778 },
+  { model: "Gemma4-e4b Q4",          org: "GOOG", score: 54.50, time: 14.076 },
+  { model: "Gemma4-e4b Q8",          org: "GOOG", score: 68.83, time: 20.189 },
+  { model: "Gemma4-e2b Q8",          org: "GOOG", score: 53.83, time: 13.612 },
+  { model: "r1-0528qwen Q4",         org: "DPSK", score: 38.33, time: 57.988 },
+  { model: "r1-0528qwen Q8",         org: "DPSK", score: 60.33, time: 41.420 },
+  { model: "Ministral 3 14b Q4",     org: "MIST", score: 44.50, time: 20.619 },
+  { model: "4.6VFlash Q4",           org: "GLM",  score: 42.50, time: 31.179 },
+  { model: "RNJ-1 Q4",               org: "ESSE", score: 36.00, time: 5.071 },
+  { model: "RNJ-1 Q8",               org: "ESSE", score: 37.00, time: 6.363 },
+  { model: "Nemotron3nano Q8",       org: "NVDA", score: 16.33, time: 13.192 }
+];
+const orgMeta={ QWEN:{color:'#F15CCA',label:'Qwen (Alibaba)'}, GOOG:{color:'#6BCB77',label:'Google (Gemma)'}, DPSK:{color:'#3B45FF',label:'DeepSeek'}, MIST:{color:'#EC7A55',label:'Mistral'}, GLM:{color:'#227DFF',label:'GLM (Zhipu)'}, ESSE:{color:'#FECB33',label:'Essense (RNJ)'}, NVDA:{color:'#83BF0D',label:'NVIDIA'}, MISC:{color:'#888888',label:'Other'} };
+function buildChartDatasets(raw){
+  const groups={}; raw.forEach(d=>{ (groups[d.org]=groups[d.org]||[]).push(d); });
+  Object.values(groups).forEach(a=>a.sort((x,y)=>x.score-y.score));
+  const datasets=[];
+  Object.entries(groups).forEach(([org, models])=>{
+    const meta=orgMeta[org]||{color:'#888',label:org};
+    if(models.length>1) datasets.push({label:`_line_${org}`, data:models.map(m=>({x:m.score,y:m.time})), borderColor:meta.color+'88', borderWidth:2, borderDash:[6,4], pointRadius:0, showLine:true, tension:0, order:2, _org:org});
+    datasets.push({label:meta.label, data:models.map(m=>({x:m.score,y:m.time,modelName:m.model})), backgroundColor:meta.color, borderColor:meta.color, pointRadius:6, showLine:false, order:1, _org:org});
+  });
+  return {datasets, groups};
+}
+function renderChart(raw){
+  const ctx=document.getElementById('benchChart').getContext('2d');
+  if(chart) chart.destroy();
+  const {datasets, groups}=buildChartDatasets(raw);
+  chart=new Chart(ctx,{type:'scatter', data:{datasets}, options:{responsive:true, maintainAspectRatio:false, scales:{x:{min:0,max:100,title:{display:true,text:'SCORE (%)',color:'#CF8AB8'}}, y:{type:'logarithmic',min:1,max:80,title:{display:true,text:'TIME / RESPONSE (s)',color:'#CF8AB8'}}}, plugins:{legend:{display:false}}}});
+  const leg=document.getElementById('legend'); leg.innerHTML='';
+  Object.entries(orgMeta).forEach(([k,m])=>{
+    if(!groups[k]) return;
+    const div=document.createElement('div'); div.textContent=m.label; div.style.cssText='padding:4px 8px;border-radius:999px;border:1px solid transparent;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.65)';
+    div.style.borderColor='rgba(207,138,184,0.15)'; div.style.background='rgba(207,138,184,0.06)';
+    const dot=document.createElement('span'); dot.style.cssText=`display:inline-block;width:8px;height:8px;border-radius:50%;background:${m.color};margin-right:6px;box-shadow:0 0 6px ${m.color}`;
+    div.prepend(dot); leg.appendChild(div);
+  });
+}
+function renderTableV1(){
+  const tb=document.querySelector('#lbTable tbody'); tb.innerHTML='';
+  // header for v1
+  document.querySelector('#lbTable thead').innerHTML='<tr><th>Model</th><th>Overall</th><th>Time</th><th>Org</th></tr>';
+  v1Data.slice().sort((a,b)=>b.score-a.score).forEach(r=>{
+    const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.model}</td><td>${r.score.toFixed(1)}</td><td>${r.time.toFixed(2)}s</td><td>${orgMeta[r.org]?.label||r.org}</td>`; tb.appendChild(tr);
+  });
+}
+function renderTableV2(){
+  document.querySelector('#lbTable thead').innerHTML='<tr><th>Model</th><th>Overall</th><th>Agentic</th><th>Roleplay</th><th>Date</th><th>#Tasks</th></tr>';
+  const tb=document.querySelector('#lbTable tbody'); tb.innerHTML='';
+  v2Runs.slice().sort((a,b)=>b.overall-a.overall).forEach(r=>{
+    const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.model_name.split('/').slice(-2).join('/')}</td><td>${r.overall.toFixed(1)}</td><td>${r.agentic.toFixed(1)}</td><td>${r.roleplay.toFixed(1)}</td><td>${new Date(r.date*1000).toLocaleDateString()}</td><td>${r.num_tasks}</td>`; tb.appendChild(tr);
+  });
+}
+async function loadLeaderboard(){
+  try{
+    const d=await jget('/api/leaderboard');
+    v2Runs=d.runs||[]; v2Chart=d.chart||[];
+    // default to v1 on first load to match root behavior, but if v2 has data, show v2? Keep v1 default.
+    if(currentVersion==='v1'){ renderChart(v1Data); renderTableV1(); document.getElementById('versionNote').textContent='Waifmark 1 board, preserved.'; }
+    else { renderChart(v2Chart); renderTableV2(); document.getElementById('versionNote').textContent = v2Chart.length ? '' : 'Waifmark 2 scores land after grading + test bank revision.'; }
+  }catch(e){ console.error(e); }
+}
+function setVersion(v){
+  currentVersion=v;
+  document.querySelectorAll('#versionToggle button').forEach(btn=>{
+    const isActive = btn.dataset.version===v;
+    btn.classList.toggle('active', isActive);
+    btn.style.background = isActive ? 'linear-gradient(135deg, rgba(209,88,180,0.35), rgba(241,92,202,0.22))' : 'transparent';
+    btn.style.color = isActive ? '#fff' : 'rgba(255,255,255,0.55)';
+    btn.style.boxShadow = isActive ? '0 0 14px rgba(209,88,180,0.25)' : 'none';
+  });
+  if(v==='v1'){ renderChart(v1Data); renderTableV1(); document.getElementById('versionNote').textContent='Waifmark 1 board, preserved.'; }
+  else {
+    if(!v2Chart.length && !v2Runs.length){ document.getElementById('versionNote').textContent='Waifmark 2 scores land after grading + test bank revision.'; }
+    else { document.getElementById('versionNote').textContent=''; }
+    renderChart(v2Chart); renderTableV2();
+  }
+}
+document.querySelectorAll('#versionToggle button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const v=btn.dataset.version;
+    if(v==='v1') setVersion('v1');
+    else if(v==='v2') setVersion('v2');
+  });
+});
+document.getElementById('btnExportLb').addEventListener('click', async()=>{
+  if(currentVersion==='v1'){
+    let csv='Model,Overall,Time,Org\n'; v1Data.forEach(r=> csv+=`"${r.model}",${r.score},${r.time},${r.org}\n`);
+    const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='waifmark1_leaderboard.csv'; a.click(); URL.revokeObjectURL(url);
+  } else {
+    const d=await jget('/api/leaderboard'); const rows=d.runs||[];
+    let csv='Model,Overall,Agentic,Roleplay,Date,Tasks\n'; rows.forEach(r=> csv+=`"${r.model_name}",${r.overall},${r.agentic},${r.roleplay},${new Date(r.date*1000).toISOString()},${r.num_tasks}\n`);
+    const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='waifmark_leaderboard.csv'; a.click(); URL.revokeObjectURL(url);
+  }
+});
+loadLeaderboard();
+</script>
+</body>
+</html>
