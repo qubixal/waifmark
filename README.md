@@ -17,9 +17,19 @@ Python 3.10+ recommended.
 cd benchmark
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt        # installs waifmark + FastAPI app
-cp .env.example .env  # add OPENROUTER_API_KEY / HF_TOKEN
-waifmark              # boots app at http://127.0.0.1:8001 (runs python -m api.run --host 127.0.0.1 --port 8001)
+cp .env.example .env  # add OPENROUTER_API_KEY / HF_TOKEN if you have them
+waifmark              # ← boots FastAPI app at http://127.0.0.1:8001
+# open http://127.0.0.1:8001  +  http://127.0.0.1:8001/docs  +  http://127.0.0.1:8001/chart
 ```
+
+Alternatives:
+```bash
+python -m api.run --host 127.0.0.1 --port 8001   # same as waifmark
+python run.py                                   # top-level helper (auto-creates .env, checks deps)
+uvicorn api.app:app --host 127.0.0.1 --port 8001 --reload  # dev
+```
+
+Single-page app covers Model Search (10/page, 40/60 split), Benchmark (capped live log), Audit (segmented), Config (expandable), Leaderboard on `/chart`. Benchmark runs as subprocess writing `data/results/.benchmark_state.json`; the API polls that file.
 
 ### Env for API keys (auto-created on boot if missing)
 
@@ -41,7 +51,7 @@ Before benchmarking, set `model` in `config.yaml` under `judges` to the judge mo
 
 ## Scoring (v2)
 
-V2 is a **complete refactor from v1**, so v2 scores are not directly comparable to v1.
+This is a **breaking change from v1** — v2 scores are not directly comparable to v1 runs.
 
 ### Agentic (deterministic)
 
@@ -79,4 +89,12 @@ benchmark/
   tests/         pytest suite (no network needed)
   config.yaml    run configuration (committed; no secrets)
   run.py         one-command boot helper
+```
+
+## Tests
+
+```bash
+pip install -e ".[dev]"
+pytest
+# API smoke: python -c "from fastapi.testclient import TestClient; from api.app import app; print(TestClient(app).get('/api/health').json())"
 ```

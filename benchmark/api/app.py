@@ -935,14 +935,9 @@ def audit_bulk(body: Dict[str, Any]):
 # ---------------------------------------------------------------------------
 
 WEB_DIR = BASE_DIR / "web"
-# Prefer new FastAPI web, fallback to legacy ui/static for assets
-for candidate in [BASE_DIR / "web", BASE_DIR / "ui" / "static"]:
-    if candidate.exists():
-        WEB_DIR = candidate
-        break
-# Serve static files if present
-if (BASE_DIR / "web").exists():
-    app.mount("/web", StaticFiles(directory=str(BASE_DIR / "web")), name="web")
+# Serve static files
+if WEB_DIR.exists():
+    app.mount("/web", StaticFiles(directory=str(WEB_DIR)), name="web")
 
 @app.get("/")
 def root():
