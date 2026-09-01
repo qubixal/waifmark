@@ -36,6 +36,8 @@ class ChatResult:
     raw_response: dict[str, Any]
     usage: dict[str, Any]
     metrics: dict[str, Any]
+    raw_content: str = ""
+    stripped_content: str = ""
 
 
 def estimate_token_count(text: str) -> int:
@@ -152,13 +154,25 @@ class VLLMClient:
                 content = choice.get("content", "")
                 if isinstance(content, list):
                     content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
-                content = str(content).strip()
-                content = strip_thinking_content(content)
+                raw_content = str(content).strip()
+                stripped_content = strip_thinking_content(raw_content)
+                content = stripped_content
                 usage = body.get("usage", {})
-                completion_tokens = int(usage.get("completion_tokens") or estimate_token_count(content))
+                # Raw tokens include thinking; stripped tokens exclude it.
+                # Prefer provider usage for raw, but estimate both for fallback.
+                raw_tokens_est = estimate_token_count(raw_content)
+                stripped_tokens_est = estimate_token_count(stripped_content)
+                thinking_tokens_est = max(0, raw_tokens_est - stripped_tokens_est)
+                # Provider completion_tokens (if present) is authoritative for raw.
+                completion_tokens = int(usage.get("completion_tokens") or raw_tokens_est)
+                # Stripped tokens for judge/verbosity (not penalized for thinking)
+                stripped_completion_tokens = int(stripped_tokens_est)
+                # Keep raw for latency accounting; stripped for content.
                 prompt_tokens = int(usage.get("prompt_tokens") or 0)
                 total_tokens = int(usage.get("total_tokens") or prompt_tokens + completion_tokens)
                 tokens_per_second = completion_tokens / elapsed_seconds if completion_tokens else 0.0
+                # tokens_per_second based on raw (includes thinking) so time includes thinking
+                stripped_tps = stripped_completion_tokens / elapsed_seconds if stripped_completion_tokens else 0.0
                 result = ChatResult(
                     content=content,
                     raw_response=body,
@@ -168,9 +182,14 @@ class VLLMClient:
                         "prompt_tokens": prompt_tokens,
                         "total_tokens": total_tokens,
                         "tokens_per_second": round(tokens_per_second, 3),
-                        "time_seconds": round(completion_tokens / tokens_per_second, 3) if tokens_per_second else round(elapsed_seconds, 3),
+                        "time_seconds": round(elapsed_seconds, 3),
                         "latency_seconds": round(elapsed_seconds, 3),
+                        "stripped_completion_tokens": stripped_completion_tokens,
+                        "thinking_tokens": thinking_tokens_est,
+                        "stripped_tokens_per_second": round(stripped_tps, 3),
                     },
+                    raw_content=raw_content,
+                    stripped_content=stripped_content,
                 )
                 self.last_chat_result = result
                 return result
@@ -178,7 +197,7 @@ class VLLMClient:
                 last_error = exc
                 LOGGER.warning("vLLM request failed on attempt %s/%s: %s", attempt, self.retries, exc)
                 if attempt < self.retries:
-                    time.sleep(min(2 ** (attempt - 1), 5))
+                    time.sleep(min(2 ** attempt, 30))
         raise VLLMConnectionError(f"Failed to reach vLLM endpoint at {self.base_url}: {last_error}") from last_error
 
     def chat_json(

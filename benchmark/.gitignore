@@ -7,6 +7,14 @@ __pycache__/
 
 # Test data (kept proprietary in Waifmark 2)
 data/test_bank.json
+data/test_bank.json.bak
+data/test_bank.example.json
+data/human_feedback.jsonl
+
+# Local config (contains judge/model choices — not for release)
+config.yaml
+config.yaml.bak
+config.local.yaml
 
 # Virtual environments
 venv/

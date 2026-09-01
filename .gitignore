@@ -7,3 +7,20 @@ venv/
 build/
 dist/
 *.egg-info/
+
+# Waifmark 2 proprietary / sensitive — never commit
+benchmark/config.yaml
+benchmark/config.yaml.bak
+benchmark/.env
+benchmark/data/test_bank.json
+benchmark/data/test_bank.example.json
+benchmark/data/results/
+benchmark/data/results/*.json
+benchmark/data/results/*.jsonl
+benchmark/data/results/*.log
+benchmark/data/results/human_feedback.jsonl
+benchmark/data/human_feedback.jsonl
+benchmark/models/
+benchmark/.venv/
+*.env
+.env

@@ -240,9 +240,12 @@ class AgentSandbox:
         ]
 
     def _validate_action(self, action: dict[str, Any], task: dict[str, Any]) -> tuple[bool, str | None]:
-        required_keys = {"thought", "action", "args", "final_answer"}
+        required_keys = {"thought", "action", "args"}
         if not isinstance(action, dict) or not required_keys.issubset(action.keys()):
             return False, "Action JSON is missing required keys."
+        # final_answer is optional for non-final actions; inject null if missing
+        if "final_answer" not in action:
+            action["final_answer"] = None
         if not isinstance(action.get("args"), dict):
             return False, "Action args must be a JSON object."
         valid_actions = {tool["name"] for tool in task.get("tools", [])}
@@ -384,13 +387,6 @@ class AgentSandbox:
         final_targets = [item.lower() for item in task.get("ground_truth", {}).get("final_answer_contains", [])]
         required_tools = task.get("ground_truth", {}).get("required_tool_calls", [])
 
-        # Partial credit for final answer
-        if final_targets:
-            matched_targets = sum(1 for t in final_targets if t in final_answer.lower())
-            final_score = matched_targets / len(final_targets)
-        else:
-            final_score = 1.0 if final_answer.strip() else 0.0
-
         # Partial credit for tool usage
         if required_tools:
             matched_tools = sum(1 for t in required_tools if t in tool_calls)
@@ -398,15 +394,15 @@ class AgentSandbox:
         else:
             tool_score = 1.0
 
-        # Goal completion blends the final answer with tool usage.
-        # The split is configurable via agentic.final_completion_weight
-        # (default 0.7), documented in README under "Scoring (v2)".
-        final_weight = float(self.config.get("agentic", {}).get("final_completion_weight", 0.7))
-        tool_weight = 1.0 - final_weight
-        goal_completion = round(final_score * final_weight + tool_score * tool_weight, 3)
+        # Partial credit for final answer
+        if final_targets:
+            matched_targets = sum(1 for t in final_targets if t in final_answer.lower())
+            final_score = matched_targets / len(final_targets) if final_answer.strip() else 0.0
+        else:
+            final_score = 1.0 if final_answer.strip() else 0.0
 
-        # Error recovery: a step counts as "recovered" when the *next* step
-        # succeeds and retries the exact same action that previously failed.
+        # Tiered scoring (vNext): empty final => 0, tool-only partial, full+correct =>100.
+        # Complexity-scaled tool credit: 1 tool -> 35 max, 2 tools -> 40 max.
         total_errors = sum(1 for step in history if step.error)
         recovered_errors = 0
         for index, step in enumerate(history[:-1]):
@@ -417,22 +413,63 @@ class AgentSandbox:
                 recovered_errors += 1
         error_recovery = round(recovered_errors / total_errors, 3) if total_errors else 1.0
 
-        weights = self.config["agentic"]["weights"]
-        overall = round(
-            (
-                (tool_syntax_accuracy * weights["tool_syntax_accuracy"])
-                + (goal_completion * weights["goal_completion"])
-                + (error_recovery * weights["error_recovery"])
-            )
-            * 100.0,
-            2,
-        )
+        # If nothing was written (no final_answer), score is 0 regardless of tool calls.
+        if not final_answer.strip():
+            return {
+                "tool_syntax_accuracy": tool_syntax_accuracy,
+                "goal_completion": 0.0,
+                "error_recovery": error_recovery,
+                "score_100": 0.0,
+                "total_errors": total_errors,
+                "tool_score": round(tool_score, 3),
+                "final_score": round(final_score, 3),
+            }
+
+        # Complexity factor: more required tools / longer horizon => slightly higher tool-only ceiling.
+        # 1 required -> 35, 2 -> 40, 3+ -> 45; plus max_steps bonus up to +5.
+        base_tool_ceiling = 30 + len(required_tools) * 5 if required_tools else 35
+        # clamp 30-45
+        base_tool_ceiling = max(30, min(45, base_tool_ceiling))
+        max_steps = int(task.get("max_steps", self.config["run"]["max_agent_steps"]))
+        # up to +5 for horizon
+        horizon_bonus = min(5, max(0, (max_steps - 6) * 1.0))
+        tool_ceiling = base_tool_ceiling + horizon_bonus  # 30-50 range
+
+        final_weight = float(self.config.get("agentic", {}).get("final_completion_weight", 0.7))
+        tool_weight = 1.0 - final_weight
+
+        # Determine overall via tiers
+        if final_score == 1.0 and tool_score == 1.0:
+            overall = 100.0
+            goal_completion = 1.0
+        elif final_score == 1.0:
+            # correct answer but missing some required tool
+            overall = round(70 + tool_score * 15, 2)  # 70-85
+            goal_completion = round(final_score * final_weight + tool_score * tool_weight, 3)
+        elif final_score > 0:
+            # partial final: diminishing credit (e.g. 1/2 => not half)
+            overall = round(tool_score * tool_ceiling * 0.7 + final_score * 40, 2)
+            # cap partial at 65 if not all targets hit
+            overall = min(overall, 65.0)
+            goal_completion = round(final_score * final_weight + tool_score * tool_weight, 3)
+        else:
+            # wrong answer but final was submitted: tool-only credit
+            overall = round(tool_score * tool_ceiling, 2)
+            goal_completion = round(tool_score * tool_weight, 3)  # final 0
+
+        # Preserve legacy weighted path for goal_completion when final empty is already handled.
+        # For non-empty cases, also compute legacy goal for diagnostics but override with tiered overall.
+        # Keep overall within 0-100
+        overall = round(max(0.0, min(100.0, overall)), 2)
+
         return {
             "tool_syntax_accuracy": tool_syntax_accuracy,
-            "goal_completion": goal_completion,
+            "goal_completion": round(goal_completion, 3),
             "error_recovery": error_recovery,
             "score_100": overall,
             "total_errors": total_errors,
+            "tool_score": round(tool_score, 3),
+            "final_score": round(final_score, 3),
         }
 
     def _serialize_step(self, item: AgentStepResult) -> dict[str, Any]:

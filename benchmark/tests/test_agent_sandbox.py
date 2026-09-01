@@ -68,9 +68,41 @@ def test_wrong_final_answer_scores_goal_credit_only():
     client = ScriptedClient([], final_answer="I think it's 7")
     result = _sandbox(client).run_task(AGENT_TASK)
     metrics = result["metrics"]
+    # Wrong final but non-empty: tool_score 0, final_score 0 => goal = tool*0.3 =0
     assert metrics["goal_completion"] == 0.0
-    # No errors, so syntax (1.0) and recovery (1.0) carry the score:
-    assert metrics["score_100"] == round(100.0 * (1.0 * 0.3 + 0.0 * 0.5 + 1.0 * 0.2), 2)
+    # Tiered: wrong answer with no required tool hit => 0
+    assert metrics["score_100"] == 0.0
+    assert metrics["tool_score"] == 0.0
+
+
+def test_empty_final_scores_zero():
+    # Empty final_answer should always be 0 regardless of tool calls
+    client = ScriptedClient(
+        [{"thought": "t", "action": "shell", "args": {"command": "cat request.txt"}, "final_answer": None}],
+        final_answer="",
+    )
+    # Force empty by not sending final_answer: script ends but we override to empty
+    # Use a client that never sends final_answer (max_steps exhausted)
+    class NoFinalClient(ScriptedClient):
+        def chat_json(self, messages, **kwargs):
+            return {"thought": "t", "action": "shell", "args": {"command": "cat request.txt"}, "final_answer": None}
+    result = _sandbox(NoFinalClient([])).run_task(AGENT_TASK)
+    metrics = result["metrics"]
+    assert metrics["score_100"] == 0.0
+    assert metrics["goal_completion"] == 0.0
+
+
+def test_wrong_final_with_tool_scores_tool_ceiling():
+    client = ScriptedClient(
+        [{"thought": "t", "action": "shell", "args": {"command": "cat request.txt"}, "final_answer": None}],
+        final_answer="I think it's 7",
+    )
+    result = _sandbox(client).run_task(AGENT_TASK)
+    metrics = result["metrics"]
+    # tool_score 1.0, final_score 0 => 35 (1-tool ceiling 35, max_steps 4)
+    assert metrics["tool_score"] == 1.0
+    assert metrics["final_score"] == 0.0
+    assert metrics["score_100"] == 35.0
 
 
 def test_partial_goal_completion_blends_answer_and_tool():
