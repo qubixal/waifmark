@@ -76,7 +76,8 @@ def test_wrong_final_answer_scores_goal_credit_only():
 
 
 def test_empty_final_scores_zero():
-    # Empty final_answer should always be 0 regardless of tool calls
+    # Empty final_answer gives tool-only partial 0-20 max (tool_score*20),
+    # not a flat 0 — rewards correct tool use without inflating to a pass
     client = ScriptedClient(
         [{"thought": "t", "action": "shell", "args": {"command": "cat request.txt"}, "final_answer": None}],
         final_answer="",
@@ -88,7 +89,7 @@ def test_empty_final_scores_zero():
             return {"thought": "t", "action": "shell", "args": {"command": "cat request.txt"}, "final_answer": None}
     result = _sandbox(NoFinalClient([])).run_task(AGENT_TASK)
     metrics = result["metrics"]
-    assert metrics["score_100"] == 0.0
+    assert metrics["score_100"] == 20.0
     assert metrics["goal_completion"] == 0.0
 
 

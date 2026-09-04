@@ -279,14 +279,26 @@ def run_benchmark(
         "overall": summarize_response_metrics([*agent_results, *roleplay_results]),
     }
 
+    total_wall_time = round(perf_counter() - started_at, 2)
+    # Add thinking stats
+    total_thinking_tokens = sum(
+        item.get("total_thinking_tokens", 0) for item in roleplay_results
+    ) + sum(
+        sum(step.get("metrics", {}).get("thinking_tokens", 0) for step in item.get("steps", []))
+        for item in agent_results
+    )
     run_payload = {
         "run_id": run_id,
         "model_name": model_name,
         "config_path": str(config_path),
         "test_bank_path": str(test_bank_path),
+        "total_wall_time_seconds": total_wall_time,
+        "total_thinking_tokens": total_thinking_tokens,
         "summary": {
             "scores": score_summary,
             "performance": performance_summary,
+            "total_wall_time_seconds": total_wall_time,
+            "total_thinking_tokens": total_thinking_tokens,
         },
         "agentic": agent_results,
         "roleplay": roleplay_results,

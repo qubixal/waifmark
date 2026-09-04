@@ -14,6 +14,8 @@ benchmark/config.yaml.bak
 benchmark/.env
 benchmark/data/test_bank.json
 benchmark/data/test_bank.example.json
+benchmark/data/test_bank_final.json
+benchmark/data/test_bank*.json
 benchmark/data/results/
 benchmark/data/results/*.json
 benchmark/data/results/*.jsonl

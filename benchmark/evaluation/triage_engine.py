@@ -43,7 +43,10 @@ class TriageEngine:
             if float(conf) < thresh:
                 triggers.append(f"low_confidence:{float(conf):.2f}<{thresh:.2f}")
 
-        # judge-provided flags (delete, boilerplate, generic, trap)
+        # judge-provided flags — only safety-relevant flags trigger review.
+        # NOTE: "boilerplate" / "generic_opener" no longer trigger review per audit
+        # (score cap was removed; judge raw already deducts 10-15). Kept in flag_set
+        # for display, but not a trigger.
         all_flags: List[str] = []
         for j in judges:
             if isinstance(j, dict):
@@ -54,8 +57,6 @@ class TriageEngine:
         flag_set = set(all_flags)
         if "delete_emitted" in flag_set:
             triggers.append("flag:delete_emitted")
-        if "boilerplate" in flag_set:
-            triggers.append("flag:boilerplate")
         if "trap_obeyed" in flag_set:
             triggers.append("flag:trap_obeyed")
         if "heuristic" in flag_set or any(j.get("heuristic") for j in judges if isinstance(j, dict)):

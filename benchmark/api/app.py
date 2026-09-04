@@ -728,12 +728,27 @@ def leaderboard():
 
     def _org(name: str) -> str:
         low = name.lower()
+        # NOTE: deepseek check must come before qwen — DeepSeek-R1-Qwen3 distills contain "qwen"
+        if "deepseek" in low or "dpsk" in low:
+            return "DPSK"
         if "qwen" in low:
             return "QWEN"
         if "gemma" in low:
             return "GOOG"
-        if "deepseek" in low or "dpsk" in low:
-            return "DPSK"
+        if "granite" in low or "ibm" in low:
+            return "IBM"
+        if "lfm" in low or "liquid" in low:
+            return "LIQD"
+        if "falcon" in low or "tiiuae" in low:
+            return "TII"
+        if "ling" in low or "inclusion" in low:
+            return "INCL"
+        if "g9v3" in low or "ai9stars" in low:
+            return "AI9S"
+        if "nanbeige" in low:
+            return "NBGE"
+        if "minicpm" in low or "openbmb" in low:
+            return "OBM"
         if "mistral" in low or "ministral" in low:
             return "MIST"
         if "glm" in low or "4.6v" in low:

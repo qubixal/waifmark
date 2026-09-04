@@ -153,7 +153,14 @@ class AgentSandbox:
             "steps": [self._serialize_step(item) for item in history],
             "tool_calls": tool_calls,
             "metrics": metrics,
-            "requires_review_hint": metrics["goal_completion"] < 0.5 or metrics["tool_syntax_accuracy"] < 0.5,
+            "requires_review_hint": (
+                # Only flag answers where substring matching could be brittle:
+                # a substantive final (>25 chars) that only partly matched.
+                # Short finals (None/True/filename/single word) and empty/clear
+                # passes are auto-decidable and don't need human eyes.
+                len(final_answer.strip()) > 25
+                and 0 < metrics.get("final_score", 0) < 1.0
+            ),
         }
 
     def _build_messages(
@@ -177,14 +184,18 @@ class AgentSandbox:
                 }
             )
 
-        # Build per-tool examples showing exact arg key names
+        # Build per-tool examples showing exact arg key names — use ls first, no real filenames
         tool_examples = []
         for tool in task.get("tools", []):
             name = tool["name"]
             if name == "shell":
                 tool_examples.append(
-                    '  {"thought": "...", "action": "shell", '
-                    '"args": {"command": "cat file.txt"}, "final_answer": null}'
+                    '  {"thought": "Need to see what files exist", "action": "shell", '
+                    '"args": {"command": "ls"}, "final_answer": null}'
+                )
+                tool_examples.append(
+                    '  {"thought": "Read the relevant file", "action": "shell", '
+                    '"args": {"command": "cat <filename>"}, "final_answer": null}'
                 )
             elif name == "search_text":
                 tool_examples.append(
@@ -209,11 +220,23 @@ class AgentSandbox:
             else:
                 tool_examples.append(f'  {{"thought": "...", "action": "{name}", "args": {{}}, "final_answer": null}}')
 
+        # CLI skill prompt — teaches the model how to use the workspace without giving away filenames
+        cli_skill = (
+            "Workspace CLI guide:\n"
+            "- Your workspace is a directory containing the task files. You start with no knowledge of filenames.\n"
+            "- Use `shell` with `ls` to list files, then `cat <filename>` to read one (e.g., `cat bank.txt`).\n"
+            "- Other useful shell commands: `head <file>`, `wc -l <file>`, `grep <pattern> <file>`, `cat *.txt`.\n"
+            "- For `search_text`, use `{\"file\": \"notes.txt\", \"query\": \"keyword\"}` to search inside a file.\n"
+            "- For `calculator`, use `{\"expression\": \"1500*1.02\"}` — supports + - * / and parentheses, use ** for power.\n"
+            "- For `lookup`, use `{\"key\": \"key_name\"}` or `{\"key\": \"__keys__\"}` to list available keys.\n"
+            "- Always start with `ls` if you don't know the filenames — do not invent filenames like `file.txt`.\n"
+        )
         system_prompt = (
             "You are an autonomous benchmark agent operating in a short-context tool sandbox. "
             "Return ONLY a JSON object with exactly these keys: thought, action, args, final_answer. "
             "DO NOT include markdown fences, code blocks, or any text outside the JSON. "
-            "\n\nTool call format (args keys are EXACT — use the key names shown):\n"
+            f"\n\n{cli_skill}"
+            "\nTool call format (args keys are EXACT — use the key names shown):\n"
             + "\n".join(tool_examples) +
             "\n\nRules:\n"
             "- Use action='final_answer' with a non-empty final_answer when you have the answer.\n"
@@ -358,6 +381,7 @@ class AgentSandbox:
             ast.Mult,
             ast.Div,
             ast.Mod,
+            ast.Pow,
             ast.USub,
             ast.UAdd,
             ast.Constant,
@@ -413,13 +437,15 @@ class AgentSandbox:
                 recovered_errors += 1
         error_recovery = round(recovered_errors / total_errors, 3) if total_errors else 1.0
 
-        # If nothing was written (no final_answer), score is 0 regardless of tool calls.
+        # If nothing was written (no final_answer), give tool-only partial 0-20 max
+        # per audit: rewards correct ls/cat effort without inflating to pass.
         if not final_answer.strip():
+            partial = round(tool_score * 20.0, 2)
             return {
                 "tool_syntax_accuracy": tool_syntax_accuracy,
                 "goal_completion": 0.0,
                 "error_recovery": error_recovery,
-                "score_100": 0.0,
+                "score_100": partial,
                 "total_errors": total_errors,
                 "tool_score": round(tool_score, 3),
                 "final_score": round(final_score, 3),
@@ -443,8 +469,9 @@ class AgentSandbox:
             overall = 100.0
             goal_completion = 1.0
         elif final_score == 1.0:
-            # correct answer but missing some required tool
-            overall = round(70 + tool_score * 15, 2)  # 70-85
+            # correct final answer via any path — path doesn't matter much.
+            # Was 70-85, now flat 90 (not 100 — perfect requires correct tools too).
+            overall = 90.0
             goal_completion = round(final_score * final_weight + tool_score * tool_weight, 3)
         elif final_score > 0:
             # partial final: diminishing credit (e.g. 1/2 => not half)

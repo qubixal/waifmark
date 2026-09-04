@@ -54,8 +54,8 @@ def estimate_token_count(text: str) -> int:
 def strip_thinking_content(content: str) -> str:
     """Remove thinking/reasoning blocks from model output.
 
-    Handles <think>...</think> tags used by thinking-only models
-    (e.g. Qwen3, DeepSeek-R1) so the actual response is extracted.
+    Handles <think>...</think> tags and plain 'Thinking Process:' leaks used by thinking-only models
+    (e.g. Qwen3, DeepSeek-R1, Qwen3.5) so the actual response is extracted.
     If no thinking tags are found, returns the content unchanged.
     """
     import re
@@ -65,6 +65,35 @@ def strip_thinking_content(content: str) -> str:
     stripped = re.sub(r"<thinking>.*?</thinking>", "", stripped, flags=re.DOTALL | re.IGNORECASE)
     stripped = re.sub(r"<reason>.*?</reason>", "", stripped, flags=re.DOTALL | re.IGNORECASE)
     stripped = re.sub(r"<thought>.*?</thought>", "", stripped, flags=re.DOTALL | re.IGNORECASE)
+    # Handle plain "Thinking Process:" leaks (Qwen3.5, DeepSeek) — remove up to the actual response
+    # These models often leak: "Thinking Process:\n1. Analyze...\n..." without closing tag, or the entire response is thinking
+    # Handle both at start and anywhere in the content
+    if re.search(r"Thinking Process:", stripped, re.IGNORECASE):
+        # If the content is very long and contains Thinking Process, it's likelythinking leak
+        if len(stripped) > 800 and "Analyze" in stripped[:1500]:
+            # Try to find where actual response starts — look for markers after thinking
+            # Common markers: "Response:", "Answer:", "Aura:", "Sensei", "---", or a short conversational start
+            parts = re.split(r"\n\s*(?:Constraints:|Response:|Answer:|Aura:|Sensei|---)\s*\n", stripped, maxsplit=1, flags=re.IGNORECASE)
+            if len(parts) > 1 and len(parts[1].strip()) > 20 and len(parts[1].strip()) < len(stripped) * 0.7:
+                stripped = parts[1]
+            else:
+                # Fallback: if still looks like thinking, try to extract the last part that looks like a real response
+                # Real responses are usually <300 chars and conversational, thinking is >800 chars
+                # Find the last occurrence of a potential response start
+                # Look for a short, conversational snippet after the thinking
+                match = re.search(r"(Sensei[~!].*|Hehe.*|Oh, Sensei.*|Aww.*|Hmm.*)", stripped, re.DOTALL | re.IGNORECASE)
+                if match and len(match.group(1).strip()) > 20 and len(match.group(1).strip()) < 800:
+                    stripped = match.group(1).strip()
+                elif len(stripped) > 1000:
+                    # If still very long and looks like thinking, truncate to last 500 chars which is likely the real response
+                    # But only if the last 500 chars don't contain "Analyze" or "Thinking Process"
+                    last_part = stripped[-800:].strip()
+                    if "Analyze" not in last_part and "Thinking Process" not in last_part and len(last_part) > 20:
+                        stripped = last_part
+    # Also handle "Reasoning:" plain leaks anywhere
+    stripped = re.sub(r"Thinking Process:.*?(?=\n[A-Z][a-z]+,|\nHai |Sensei|~|💕|😊|$)", "", stripped, flags=re.DOTALL | re.IGNORECASE)
+    stripped = re.sub(r"^\s*Reasoning:.*?\n\s*\n", "", stripped, flags=re.DOTALL | re.IGNORECASE)
+    stripped = re.sub(r"Reasoning:.*?\n\s*\n", "", stripped, flags=re.DOTALL | re.IGNORECASE)
     return stripped.strip()
 
 
@@ -152,9 +181,19 @@ class VLLMClient:
                 elapsed_seconds = max(time.perf_counter() - started_at, 0.001)
                 choice = body["choices"][0]["message"]
                 content = choice.get("content", "")
+                # Fallback for thinking/reasoning models: check reasoning_content and reasoning fields
+                # (llama.cpp uses reasoning_content, some OpenRouter models use reasoning)
+                if not content or not str(content).strip():
+                    content = choice.get("reasoning_content", "") or choice.get("reasoning", "") or ""
+                # Some providers put reasoning in separate field even when content exists; combine if content empty
                 if isinstance(content, list):
                     content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
                 raw_content = str(content).strip()
+                # If still empty but reasoning fields exist, use them
+                if not raw_content:
+                    rc = choice.get("reasoning_content", "") or choice.get("reasoning", "")
+                    if rc:
+                        raw_content = str(rc).strip()
                 stripped_content = strip_thinking_content(raw_content)
                 content = stripped_content
                 usage = body.get("usage", {})

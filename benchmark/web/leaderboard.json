@@ -1,0 +1,280 @@
+{
+  "generated_at": "2026-09-04T02:07:18.932005+00:00",
+  "source": "waifmark 2 benchmark snapshot: 12 agentic + 4 roleplay tasks; score aggregates only",
+  "runs": [
+    {
+      "run_id": "run_20260903T115651Z758038",
+      "model_name": "Qwen3.5-9B-Q3",
+      "overall": 88.91,
+      "agentic": 94.54,
+      "roleplay": 72.0,
+      "num_tasks": 16,
+      "date": 1788483778.2550318
+    },
+    {
+      "run_id": "run_20260903T113527Z714810",
+      "model_name": "Gemma-4-12B-Q3",
+      "overall": 80.41,
+      "agentic": 87.04,
+      "roleplay": 60.5,
+      "num_tasks": 16,
+      "date": 1788483778.276208
+    },
+    {
+      "run_id": "run_20260903T073336Z539853",
+      "model_name": "Nanbeige4.2-3B-Q4",
+      "overall": 75.5,
+      "agentic": 90.0,
+      "roleplay": 32.0,
+      "num_tasks": 16,
+      "date": 1788483558.4697793
+    },
+    {
+      "run_id": "run_20260903T075116Z938771",
+      "model_name": "Granite-4.2-8B-Q4",
+      "overall": 66.81,
+      "agentic": 75.42,
+      "roleplay": 41.0,
+      "num_tasks": 16,
+      "date": 1788484142.7100704
+    },
+    {
+      "run_id": "run_20260903T065101Z765157",
+      "model_name": "LFM2.5-2.6B-Q4",
+      "overall": 55.22,
+      "agentic": 64.12,
+      "roleplay": 28.5,
+      "num_tasks": 16,
+      "date": 1788483778.2734497
+    },
+    {
+      "run_id": "run_20260903T123456Z746831",
+      "model_name": "mlx-community/Qwen3.5-4B-MLX-4bit",
+      "overall": 49.41,
+      "agentic": 48.54,
+      "roleplay": 52.0,
+      "num_tasks": 16,
+      "date": 1788483778.261172
+    },
+    {
+      "run_id": "run_20260903T112719Z701421",
+      "model_name": "mlx-community/gemma-4-E4B-it-4bit",
+      "overall": 43.19,
+      "agentic": 33.08,
+      "roleplay": 73.5,
+      "num_tasks": 16,
+      "date": 1788483778.2667027
+    },
+    {
+      "run_id": "run_20260903T082510Z425608",
+      "model_name": "Ling-3.0-Tiny-Q4",
+      "overall": 34.53,
+      "agentic": 37.04,
+      "roleplay": 27.0,
+      "num_tasks": 16,
+      "date": 1788484122.795435
+    },
+    {
+      "run_id": "run_20260903T072438Z316960",
+      "model_name": "G9V3-3B-Q4",
+      "overall": 34.25,
+      "agentic": 33.33,
+      "roleplay": 37.0,
+      "num_tasks": 16,
+      "date": 1788483142.3072205
+    },
+    {
+      "run_id": "run_20260903T065949Z677416",
+      "model_name": "Granite-4.2-3B-Q4",
+      "overall": 31.84,
+      "agentic": 27.04,
+      "roleplay": 46.25,
+      "num_tasks": 16,
+      "date": 1788484239.7304764
+    },
+    {
+      "run_id": "run_20260904T000829Z900060",
+      "model_name": "Gemma-4-E2B-Q4",
+      "overall": 26.56,
+      "agentic": 15.5,
+      "roleplay": 59.75,
+      "num_tasks": 16,
+      "date": 1788483294.5708745
+    },
+    {
+      "run_id": "run_20260903T122317Z363672",
+      "model_name": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+      "overall": 21.0,
+      "agentic": 15.17,
+      "roleplay": 38.5,
+      "num_tasks": 16,
+      "date": 1788483778.2702973
+    },
+    {
+      "run_id": "run_20260903T101759Z822236",
+      "model_name": "LFM2.5-8B-A1B-Q4",
+      "overall": 15.62,
+      "agentic": 7.5,
+      "roleplay": 40.0,
+      "num_tasks": 16,
+      "date": 1788483558.4598544
+    },
+    {
+      "run_id": "run_20260903T083050Z431187",
+      "model_name": "Falcon-H1R-7B-Q4",
+      "overall": 9.06,
+      "agentic": 2.92,
+      "roleplay": 27.5,
+      "num_tasks": 16,
+      "date": 1788484097.3482907
+    },
+    {
+      "run_id": "run_20260903T124407Z170167",
+      "model_name": "lmstudio-community/DeepSeek-R1-0528-Qwen3-8B-MLX-4bit",
+      "overall": 7.43,
+      "agentic": 0.08,
+      "roleplay": 29.5,
+      "num_tasks": 16,
+      "date": 1788483492.971762
+    },
+    {
+      "run_id": "run_20260903T122824Z396334",
+      "model_name": "mlx-community/Qwen3.5-2B-4bit",
+      "overall": 5.5,
+      "agentic": 2.92,
+      "roleplay": 13.25,
+      "num_tasks": 16,
+      "date": 1788484035.0480351
+    },
+    {
+      "run_id": "run_20260903T064237Z857178",
+      "model_name": "mlx-community/MiniCPM5-1B-4bit",
+      "overall": 3.5,
+      "agentic": 0.0,
+      "roleplay": 14.0,
+      "num_tasks": 16,
+      "date": 1788484259.6737797
+    }
+  ],
+  "chart": [
+    {
+      "model": "G9V3 3B Q4",
+      "org": "AI9S",
+      "score": 34.25,
+      "time": 4.039,
+      "run_id": "run_20260903T072438Z316960"
+    },
+    {
+      "model": "Gemma 4 E2B Q4",
+      "org": "GOOG",
+      "score": 26.56,
+      "time": 3.891,
+      "run_id": "run_20260904T000829Z900060"
+    },
+    {
+      "model": "DeepSeek R1 0528 Qwen3 8B MLX 4bit",
+      "org": "DPSK",
+      "score": 7.43,
+      "time": 33.188,
+      "run_id": "run_20260903T124407Z170167"
+    },
+    {
+      "model": "LFM2.5 8B A1B Q4",
+      "org": "LIQD",
+      "score": 15.62,
+      "time": 7.381,
+      "run_id": "run_20260903T101759Z822236"
+    },
+    {
+      "model": "Nanbeige4.2 3B Q4",
+      "org": "NBGE",
+      "score": 75.5,
+      "time": 14.081,
+      "run_id": "run_20260903T073336Z539853"
+    },
+    {
+      "model": "Qwen3.5 9B Q3",
+      "org": "QWEN",
+      "score": 88.91,
+      "time": 11.033,
+      "run_id": "run_20260903T115651Z758038"
+    },
+    {
+      "model": "Qwen3.5 4B MLX 4bit",
+      "org": "QWEN",
+      "score": 49.41,
+      "time": 6.187,
+      "run_id": "run_20260903T123456Z746831"
+    },
+    {
+      "model": "gemma 4 E4B it 4bit",
+      "org": "GOOG",
+      "score": 43.19,
+      "time": 6.17,
+      "run_id": "run_20260903T112719Z701421"
+    },
+    {
+      "model": "Qwen3 4B Instruct 2507 4bit",
+      "org": "QWEN",
+      "score": 21.0,
+      "time": 2.792,
+      "run_id": "run_20260903T122317Z363672"
+    },
+    {
+      "model": "LFM2.5 2.6B Q4",
+      "org": "LIQD",
+      "score": 55.22,
+      "time": 4.974,
+      "run_id": "run_20260903T065101Z765157"
+    },
+    {
+      "model": "Gemma 4 12B Q3",
+      "org": "GOOG",
+      "score": 80.41,
+      "time": 13.504,
+      "run_id": "run_20260903T113527Z714810"
+    },
+    {
+      "model": "Qwen3.5 2B 4bit",
+      "org": "QWEN",
+      "score": 5.5,
+      "time": 3.802,
+      "run_id": "run_20260903T122824Z396334"
+    },
+    {
+      "model": "Falcon H1R 7B Q4",
+      "org": "TII",
+      "score": 9.06,
+      "time": 56.661,
+      "run_id": "run_20260903T083050Z431187"
+    },
+    {
+      "model": "Ling 3.0 Tiny Q4",
+      "org": "INCL",
+      "score": 34.53,
+      "time": 3.18,
+      "run_id": "run_20260903T082510Z425608"
+    },
+    {
+      "model": "Granite 4.2 8B Q4",
+      "org": "IBM",
+      "score": 66.81,
+      "time": 18.986,
+      "run_id": "run_20260903T075116Z938771"
+    },
+    {
+      "model": "Granite 4.2 3B Q4",
+      "org": "IBM",
+      "score": 31.84,
+      "time": 13.079,
+      "run_id": "run_20260903T065949Z677416"
+    },
+    {
+      "model": "MiniCPM5 1B 4bit",
+      "org": "OBM",
+      "score": 3.5,
+      "time": 3.834,
+      "run_id": "run_20260903T064237Z857178"
+    }
+  ]
+}

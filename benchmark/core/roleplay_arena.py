@@ -42,17 +42,29 @@ class RoleplayArena:
                         "turn_total": len(turns),
                     }
                 )
-            messages.append({"role": "user", "content": user_turn})
+            # Inject </think> to force-close any open thinking block (Qwen3.5 trick)
+            # This helps thinking models stop reasoning and start the actual response
+            user_content = user_turn
+            # For known thinking models, append a hint to close thinking
+            if "Qwen3.5" in self.client.model_name or "DeepSeek" in self.client.model_name or "Thinking" in self.client.model_name:
+                user_content = user_turn + "\n\n</think>"
+            messages.append({"role": "user", "content": user_content})
             assistant_text = ""
+            assistant_raw = ""  # Keep raw thinking for logs
             metrics: dict[str, Any] = {}
             try:
+                # For roleplay, explicitly disable thinking to prevent leaks
+                # Qwen3.5 and DeepSeek thinking models leak "Thinking Process:" into the response
                 result = self.client.chat(
                     messages,
                     temperature=float(task.get("temperature", self.config["roleplay"]["temperature"])),
                     max_tokens=int(task.get("max_tokens", self.config["roleplay"]["max_tokens"])),
+                    extra_body={"chat_template_kwargs": {"enable_thinking": False}},
                 )
-                assistant_text = result.content
+                assistant_raw = result.raw_content if hasattr(result, 'raw_content') and result.raw_content else result.content
+                assistant_text = result.content  # Already stripped via vllm_client
                 metrics = result.metrics
+                # Keep thinking for record but use stripped for conversation
                 messages.append({"role": "assistant", "content": assistant_text})
             except VLLMConnectionError as exc:
                 assistant_text = f"[vLLM error: {exc}]"
@@ -65,18 +77,25 @@ class RoleplayArena:
                     "turn": index,
                     "user": user_turn,
                     "assistant": assistant_text,
+                    "assistant_raw": assistant_raw,
+                    "thinking_tokens": metrics.get("thinking_tokens", 0) if isinstance(metrics, dict) else 0,
                     "is_trap_turn": index in task.get("trap_turn_indices", []),
                     "metrics": metrics,
                 }
             )
 
         combined_response = "\n".join(item["assistant"] for item in transcript)
+        combined_raw = "\n".join(item.get("assistant_raw", item["assistant"]) for item in transcript)
+        # Track thinking stats for analysis
+        total_thinking = sum(item.get("thinking_tokens", 0) for item in transcript)
         return {
             "task_id": task["id"],
             "task_type": "roleplay",
             "character_name": task["character_name"],
             "transcript": transcript,
             "combined_response": combined_response,
+            "combined_raw": combined_raw,
+            "total_thinking_tokens": total_thinking,
             "errors": errors,
         }
 
@@ -86,9 +105,12 @@ class RoleplayArena:
         # for banks that rely on the global default.
         task_prompt = task.get("character_prompt", "").strip()
         if task_prompt:
-            return task_prompt
+            # Append thinking suppression for thinking models
+            thinking_guard = "\n\nIMPORTANT: Do NOT show your thinking process, reasoning, or 'Thinking Process:' sections. Only output the final in-character response in Aura's voice."
+            return task_prompt + thinking_guard
         base_prompt = self.config.get("roleplay", {}).get("system_prompt", "")
         if not base_prompt:
             # Fallback: build from task fields (legacy)
             base_prompt = f"You are roleplaying as {task['character_name']}."
-        return base_prompt
+        thinking_guard = "\n\nIMPORTANT: Do NOT show your thinking process, reasoning, or 'Thinking Process:' sections. Only output the final in-character response."
+        return base_prompt + thinking_guard
