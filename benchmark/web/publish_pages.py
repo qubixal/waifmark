@@ -111,9 +111,27 @@ def main() -> None:
         "chart": chart,
     }
     DOCS.mkdir(parents=True, exist_ok=True)
+    board_text = json.dumps(out, ensure_ascii=False)
     (DOCS / "leaderboard.json").write_text(json.dumps(out, indent=2, ensure_ascii=False))
     # Keep the published page in sync with the app page (same file, static-safe).
     (DOCS / "chart.html").write_text((ROOT / "benchmark" / "web" / "chart.html").read_text())
+    # Bake the snapshot into the static pages so file:// opens work offline
+    # (browsers block fetch of leaderboard.json from file://). The live API is
+    # still tried first at runtime; the embedded copy is only a fallback.
+    for page in ("chart.html", "index.html"):
+        p = DOCS / page
+        if not p.exists():
+            continue
+        t = p.read_text()
+        # Line-anchored: the payload itself contains ';' (in the source
+        # string), so a non-greedy match to the first ';' would corrupt
+        # re-publishes. The payload is single-line JSON, so match to EOL.
+        t2, n = re.subn(r"(const EMBEDDED_BOARD=)[^\n]*", r"\1" + board_text + ";", t, count=1)
+        if n:
+            p.write_text(t2)
+            print(f"embedded board snapshot -> {page}")
+        else:
+            print(f"no EMBEDDED_BOARD marker in {page} — left as-is", file=sys.stderr)
     print(f"published {len(runs)} runs, {len(chart)} chart points -> repo root")
 
 

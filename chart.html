@@ -1,281 +1,203 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Waifmark 2 — Leaderboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.pink.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap');
-  :root {
-    --bg: #0F0F1A;
-    --p1: #CF8AB8;
-    --p2: #D158B4;
-    --p3: #F15CCA;
-    --s1: #3A3231;
-    --s2: #3A3A3D;
-    --s3: #474C60;
-    --s4: rgba(71, 67, 114, 0.8);
-    --font: 'Zen Maru Gothic', 'Tsukimi Rounded', 'Rounded Mplus 1c', sans-serif;
+  :root { --pico-font-family: 'Zen Maru Gothic', system-ui, sans-serif; }
+  /* Must match Pico's own selector specificity (:root:not(...)=0,2,0)
+     or the theme defaults win and pastel never applies. */
+  html:root:not([data-theme="dark"]) {
+    --pico-background-color: #FBF6EE;
+    --pico-card-background-color: #FFFDF6;
+    --pico-card-sectioning-background-color: #FAEDE8;
+    --pico-card-border-color: #EFD2CB;
+    --pico-color: #33272A;
+    --pico-muted-color: #97807D;
+    --pico-muted-border-color: #EDD9D3;
+    --pico-primary-background: #E8919C;
+    --pico-primary-border: #E08A95;
+    --pico-primary-hover: #A63A55;
+    --pico-primary-hover-background: #DE7F8D;
+    --pico-primary-hover-border: #DE7F8D;
+    --pico-primary-focus: rgba(232, 145, 156, 0.45);
+    --pico-primary-underline: rgba(232, 145, 156, 0.55);
+    --pico-primary-inverse: #5A1F2D;
+    --pico-secondary-background: #F9E9E6;
+    --pico-secondary-border: #EFD2CB;
+    --pico-secondary-hover: #A63A55;
+    --pico-secondary-hover-background: #F5DCD5;
+    --pico-secondary-hover-border: #EFD2CB;
+    --pico-secondary-inverse: #75303F;
+    --pico-secondary-focus: rgba(232, 145, 156, 0.4);
+    --pico-secondary: #A63A55;
+    --pico-secondary-underline: rgba(232, 145, 156, 0.55);
+    --pico-form-element-background-color: #FFFDF6;
+    --pico-box-shadow: none;
+    --pico-card-box-shadow: none;
   }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: var(--bg);
-    color: #e0e0e0;
-    font-family: var(--font);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-height: 100vh;
-    padding: 20px;
-  }
-  .topbar {
-    width: 100%;
-    max-width: 1100px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 10px;
-  }
-  .brand {
-    font-weight: 900;
-    letter-spacing: 0.5px;
-    background: linear-gradient(90deg, var(--p1) 0%, var(--p2) 70%, var(--p3) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    font-size: 16px;
-  }
+  body { font-family: var(--pico-font-family); }
+  .brand { font-weight: 900; font-size: 1.15rem; letter-spacing: -0.01em; white-space: nowrap; }
   .brand small {
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: rgba(207, 138, 184, 0.5);
-    -webkit-text-fill-color: rgba(207, 138, 184, 0.5);
-    margin-left: 6px;
-    font-size: 9px;
+    font-weight: 700; font-size: 0.62rem; letter-spacing: 0.1em;
+    border: 1px solid var(--pico-primary-border); border-radius: 6px; padding: 2px 7px;
+    margin-left: 8px; vertical-align: 2px;
   }
-  .btn-back {
-    font-family: var(--font);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    color: #e0e0e0;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(207, 138, 184, 0.16);
-    border-radius: 999px;
-    padding: 7px 14px;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.15s;
-  }
-  .btn-back:hover { background: rgba(207,138,184,0.12); border-color: rgba(207,138,184,0.24); }
-  .chart-wrapper {
-    width: 100%;
-    max-width: 1100px;
-    position: relative;
-    border-radius: 10px;
-    padding: 30px 28px 20px;
-    border: 0px solid rgba(207, 138, 184, 0.15);
-    box-shadow:
-      0 0 80px rgba(209, 88, 180, 0.06),
-      0 4px 40px rgba(0,0,0,0.5),
-      inset 0 1px 0 rgba(255,255,255,0.04);
-  }
-  .chart-wrapper::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 16px;
-    padding: 1px;
-    background: linear-gradient(160deg, rgba(207,138,184,0.25), rgba(241,92,202,0.05));
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-  }
-  .header-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 4px;
-  }
-  .header-titles { min-width: 0; }
-  .header-titles h1 { font-variant-numeric: tabular-nums; }
-  h1 {
-    text-align: left;
-    font-family: var(--font);
-    font-size: 30px;
-    font-weight: 900;
-    letter-spacing: 0.5px;
-    background: linear-gradient(90deg, var(--p1) 0%, var(--p2) 70%, var(--p3) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 4px;
-  }
-  .subtitle {
-    text-align: left;
-    font-size: 15px;
-    font-weight: 500;
-    color: rgba(207, 138, 184, 0.45);
-    margin-bottom: 5px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-  }
-  .version-toggle {
-    display: flex;
-    flex-shrink: 0;
-    padding: 3px;
-    border-radius: 22px;
-    background: rgba(58, 58, 61, 0.5);
-    border: 1px solid rgba(207, 138, 184, 0.18);
-  }
+  .brand-kana { font-size: 0.68rem; font-weight: 500; letter-spacing: 0.22em; color: var(--pico-muted-color); }
+  .meta-updated { font-size: 0.75rem; color: var(--pico-muted-color); white-space: nowrap; }
+  .eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; color: #B44A63; margin-bottom: 0.35rem; }
+  .eyebrow .kana { color: var(--pico-muted-color); font-weight: 500; margin-right: 8px; }
+  article.report { border-top: 4px solid #E8919C; }
+  h1 { font-size: 1.9rem; font-weight: 900; letter-spacing: -0.015em; margin-bottom: 0.25rem; font-variant-numeric: tabular-nums; }
+  .subtitle { color: var(--pico-muted-color); font-size: 0.9rem; }
+  .subtitle strong { color: inherit; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.65rem; margin: 1rem 0; }
+  .kpi { border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius); padding: 0.55rem 0.9rem; background: var(--pico-card-background-color); display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .kpi .k { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pico-muted-color); margin-bottom: 0; }
+  .kpi .v { font-size: 1.1rem; font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .kpi .s { font-size: 0.72rem; color: var(--pico-muted-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .kpi.hero-kpi .v { color: #B44A63; }
+  @media (max-width: 800px) { .kpis { grid-template-columns: 1fr 1fr; } }
+  .version-toggle { display: flex; flex-shrink: 0; padding: 3px; border-radius: 10px; background: #F9E9E6; border: 1px solid #EFD2CB; }
   .version-toggle button {
-    font-family: var(--font);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    color: rgba(255,255,255,0.55);
-    background: transparent;
-    border: none;
-    border-radius: 18px;
-    padding: 7px 16px;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    user-select: none;
+    font-family: inherit; font-size: 0.85rem; font-weight: 700;
+    color: var(--pico-color); background: transparent; border: 1px solid transparent;
+    border-radius: 8px; padding: 8px 18px; margin: 0; cursor: pointer; width: auto;
   }
-  .version-toggle button.active {
-    background: linear-gradient(135deg, rgba(209,88,180,0.35), rgba(241,92,202,0.22));
-    color: #fff;
-    box-shadow: 0 0 14px rgba(209, 88, 180, 0.25);
-  }
-  .version-note {
-    text-align: center;
-    font-size: 11px;
-    color: rgba(207, 138, 184, 0.25);
-    letter-spacing: 0.5px;
-    margin-bottom: 8px;
-    transition: opacity 0.3s ease;
-    min-height: 14px;
-  }
-  .canvas-container {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16 / 10;
-    max-height: 60vh;
-    min-height: 240px;
-  }
-  @media (max-width: 700px) {
-    .canvas-container { aspect-ratio: 4 / 3; min-height: 220px; }
-  }
-  .legend-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-content: flex-start;
-    gap: 18px;
-    margin-top: 5px;
-    margin-bottom: 8px;
-    padding-top: 14px;
-    border-top: 3px solid rgba(207, 138, 184, 0.1);
-    min-height: 78px;
-  }
+  .version-toggle button.active { background: var(--pico-card-background-color); color: var(--pico-color); border-color: var(--pico-muted-border-color); box-shadow: var(--pico-card-box-shadow); }
+  #versionToggle button { color: #4A3F49; }
+  #versionToggle button.active { background: #FFFDF6; color: #161216; border-color: #EFC9CF; }
+  .canvas-container { position: relative; width: 100%; aspect-ratio: 16 / 10; max-height: 62vh; min-height: 300px; margin-top: 0.4rem; }
+  @media (max-width: 700px) { .canvas-container { aspect-ratio: 4 / 3; min-height: 250px; } h1 { font-size: 1.5rem; } }
+  .legend-container { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--pico-muted-border-color); }
   .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 14px;
-    font-weight: 500;
-    color: rgba(255,255,255,0.55);
-    cursor: pointer;
-    padding: 5px 12px;
-    border-radius: 20px;
-    border: 1px solid transparent;
-    transition: all 0.3s ease;
-    user-select: none;
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 0.85rem; font-weight: 700; cursor: pointer;
+    padding: 5px 10px 5px 8px; border-radius: 8px;
+    border: 1px solid var(--pico-muted-border-color); background: var(--pico-card-background-color);
+    user-select: none; margin: 0;
   }
-  .legend-item:hover {
-    background: rgba(207, 138, 184, 0.08);
-    border-color: rgba(207, 138, 184, 0.15);
+  .legend-item.active { border-color: var(--pico-primary-background); background: var(--pico-primary-background); color: var(--pico-primary-inverse); }
+  .legend-item.active .legend-count { color: inherit; opacity: 0.8; }
+  .legend-item.dimmed { opacity: 0.45; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.12); }
+  .legend-item.active .legend-dot { border-color: rgba(255,255,255,0.5); }
+  .legend-count { font-size: 0.72rem; font-weight: 700; color: var(--pico-color); opacity: 0.65; }
+  #filterReadout { text-align: center; margin-top: 0.5rem; min-height: 16px; font-size: 0.72rem; color: var(--pico-muted-color); }
+  .table-head { display: flex; align-items: baseline; gap: 0.6rem; margin: 0.9rem 0 0.6rem; }
+  .table-head h2 { font-size: 1.05rem; font-weight: 900; margin: 0; }
+  .table-head .count { font-size: 0.82rem; color: var(--pico-muted-color); }
+  .table-head .spacer { flex: 1; align-self: center; }
+  .small-export { width: auto; margin: 0; align-self: center; font-size: 0.7rem; padding: 0.3rem 0.7rem; }
+  .table-tools { display: flex; gap: 0.5rem; margin-bottom: 0.6rem; }
+  .table-tools input[type="search"] { flex: 1 1 auto; min-width: 0; margin: 0; height: auto; background-color: #FBEDE7; border: 1px solid #E8CFC6; font-size: 0.85rem; padding-top: 0.35rem; padding-bottom: 0.35rem; line-height: 1.4; }
+  .table-tools select { width: auto; min-width: 160px; margin: 0; height: auto; background-color: #FBEDE7; border: 1px solid #E8CFC6; font-size: 0.85rem; padding-top: 0.35rem; padding-bottom: 0.35rem; line-height: 1.4; }
+  #lbTable thead th { background: #FAEDE8; }
+  .rank-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 30px; height: 24px; padding: 0 7px;
+    font-size: 0.78rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: #B44A63; background: #FFFDF6;
+    border: 1px solid #EFC9CF; border-radius: 6px;
   }
-  .legend-item.active {
-    background: rgba(207, 138, 184, 0.12);
-    border-color: rgba(207, 138, 184, 0.3);
-    color: rgba(255,255,255,0.85);
+  tr.top1 .rank-badge { background: var(--pico-primary-background); border-color: var(--pico-primary-background); color: var(--pico-primary-inverse); }
+  tr.top2 .rank-badge, tr.top3 .rank-badge { color: #B44A63; border-color: #EFC9CF; }
+  .model-cell { font-weight: 700; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .org-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.78rem; font-weight: 700; white-space: nowrap; color: var(--pico-color);
+    background: #FDF4F0; border: 1px solid #EFD2CB;
+    border-radius: 6px; padding: 2px 8px 2px 6px;
   }
-  .legend-item.dimmed { opacity: 0.35; }
-  .legend-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    box-shadow: 0 0 6px currentColor;
-    transition: all 0.3s ease;
-  }
-  .legend-item.dimmed .legend-dot { box-shadow: none; }
-  .table-wrap {
-    margin-top: 10px;
-    border: 1px solid rgba(207, 138, 184, 0.12);
-    border-radius: 10px;
-    background: rgba(255,255,255,0.01);
-    overflow: auto;
-    max-height: 38vh;
-  }
-  table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
-  th{font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:rgba(207,138,184,0.6);text-align:left;padding:8px 6px;border-bottom:1px solid rgba(207,138,184,0.12);position:sticky;top:0;background:var(--bg);z-index:1}
-  td{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:top}
-  tr:hover td{background:rgba(207,138,184,0.05)}
-  .export-row{display:flex;justify-content:flex-end;margin-top:8px}
-  .btn-export{
-    font-family:var(--font);font-size:12px;font-weight:700;
-    color:#e0e0e0;background:rgba(255,255,255,0.06);border:1px solid rgba(207,138,184,0.16);
-    border-radius:999px;padding:6px 12px;cursor:pointer;
-  }
-  .btn-export:hover{background:rgba(207,138,184,0.12)}
-  .no-data{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;pointer-events:none;z-index:2}
-  .no-data .big{font-size:15px;font-weight:700;color:rgba(207,138,184,0.4)}
-  .no-data .sub{font-size:11px;color:rgba(207,138,184,0.2)}
-  ::-webkit-scrollbar{width:6px;height:6px}
-  ::-webkit-scrollbar-track{background:transparent}
-  ::-webkit-scrollbar-thumb{background:rgba(207,138,184,0.2);border-radius:999px}
-  ::-webkit-scrollbar-thumb:hover{background:rgba(207,138,184,0.35)}
+  .org-chip i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,0.14); }
+  .score-cell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .score-bar { width: 110px; height: 8px; border-radius: 4px; background: #F9E4DF; border: 1px solid #EFD2CB; overflow: hidden; flex-shrink: 0; }
+  .score-bar i { display: block; height: 100%; background: var(--pico-primary-hover-background); }
+  .no-data { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 2; }
+  .no-data-box { border: 1.5px dashed var(--pico-muted-border-color); border-radius: 10px; padding: 26px 30px; text-align: center; background: var(--pico-card-background-color); }
+  .no-data .big { font-size: 1rem; font-weight: 900; }
+  .no-data .sub { font-size: 0.78rem; color: var(--pico-muted-color); }
+  .site-footer { font-size: 0.72rem; color: var(--pico-muted-color); }
+  .site-footer .kana { letter-spacing: 0.2em; }
 </style>
 </head>
 <body>
-  <div class="topbar">
-    <a href="/" class="btn-back" id="backBtn">← Back to Benchmarking Suite</a>
-    <div class="brand" style="margin-left:4px">Waifmark 2 <small>Leaderboard</small></div>
-    <div style="flex:1"></div>
-    <a href="/docs" id="docsLink" target="_blank" style="font-size:11px;color:rgba(207,138,184,0.5);text-decoration:none">API docs</a>
-  </div>
+  <header class="container">
+    <nav>
+      <ul>
+        <li><a href="/" class="secondary" id="backBtn">← Suite</a></li>
+        <li><span class="brand">Waifmark 2 <small>LEADERBOARD</small></span> <span class="brand-kana">ワイフマーク</span></li>
+      </ul>
+      <ul>
+        <li><span class="meta-updated" id="metaUpdated"></span></li>
+        <li><a href="/docs" id="docsLink" class="secondary" target="_blank">API docs</a></li>
+      </ul>
+    </nav>
+  </header>
 
-  <div class="chart-wrapper">
-    <div class="header-row">
-      <div class="header-titles">
-        <h1 id="chartTitle">Waifmark 1 for Small (V)LLMs</h1>
-        <div class="subtitle">Score vs Latency</div>
+  <main class="container">
+    <section class="kpis">
+      <article class="kpi hero-kpi" style="margin:0"><div class="k">Best overall</div><div class="v" id="kpiBest">—</div><div class="s" id="kpiBestSub">—</div></article>
+      <article class="kpi" style="margin:0"><div class="k">Models tracked</div><div class="v" id="kpiModels">—</div><div class="s" id="kpiOrgs">—</div></article>
+      <article class="kpi" style="margin:0"><div class="k">Median latency</div><div class="v" id="kpiLatency">—</div><div class="s">sec / response</div></article>
+      <article class="kpi" style="margin:0"><div class="k">Updated</div><div class="v" id="kpiUpdated" style="font-size:1rem">—</div></article>
+    </section>
+
+    <article class="report">
+      <header>
+        <div class="eyebrow"><span class="kana">ワイフマーク</span>BENCHMARK REPORT</div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:2px">
+        <div>
+          <h1 id="chartTitle">Waifmark 1 for Small (V)LLMs</h1>
+          <p class="subtitle" style="margin:0"><strong>Score vs latency.</strong> Bottom-right wins.</p>
+        </div>
+        <div class="version-toggle" id="versionToggle">
+          <button data-version="v1" class="active">Waifmark 1</button>
+          <button data-version="v2">Waifmark 2</button>
+        </div>
+        </div>
+      </header>
+      <p class="version-note" id="versionNote" style="font-size:0.78rem;color:var(--pico-muted-color);min-height:16px;margin:6px 0 2px"></p>
+      <div class="canvas-container">
+        <canvas id="benchChart"></canvas>
+        <div class="no-data" id="noDataOverlay" style="display:none"><div class="no-data-box"><div class="big">No data yet</div><div class="sub">Waifmark 2 scores land after grading.</div></div></div>
       </div>
-      <div class="version-toggle" id="versionToggle">
-        <button data-version="v1" class="active">Waifmark 1</button>
-        <button data-version="v2">Waifmark 2</button>
+      <div class="legend-container" id="legend"></div>
+      <div id="filterReadout"></div>
+
+      <div class="table-head">
+        <h2>Rankings</h2>
+        <span class="count" id="lbCount"></span>
+        <div class="spacer"></div>
+        <button id="btnExportLb" class="secondary small-export">Export CSV</button>
       </div>
-    </div>
-    <div class="version-note" id="versionNote"></div>
-    <div class="canvas-container">
-      <canvas id="benchChart"></canvas>
-      <div class="no-data" id="noDataOverlay"><span class="big">No data yet</span><span class="sub">Waifmark 2 scores land after grading.</span></div>
-    </div>
-    <div class="legend-container" id="legend"></div>
-    <div id="filterReadout" class="small muted" style="text-align:center;margin-top:2px;min-height:16px;font-size:11px;letter-spacing:0.04em"></div>
-    <div class="table-wrap"><table id="lbTable"><thead><tr><th>Model</th><th>Overall</th><th>Time</th><th>Org</th></tr></thead><tbody></tbody></table></div>
-    <div class="export-row"><button id="btnExportLb" class="btn-export">Export CSV</button></div>
-  </div>
+      <div class="table-tools">
+        <input type="search" id="lbSearch" placeholder="Filter models…" aria-label="Filter models">
+        <select id="lbSort" aria-label="Sort table">
+          <option value="overall">Sort: Overall</option>
+          <option value="agentic">Sort: Agentic</option>
+          <option value="roleplay">Sort: Roleplay</option>
+          <option value="time">Sort: Fastest</option>
+        </select>
+      </div>
+      <figure style="margin:0"><div style="overflow:auto;max-height:42vh"><table id="lbTable"><thead><tr><th>#</th><th>Model</th><th>Org</th><th class="num">Overall</th><th class="num">Time</th></tr></thead><tbody></tbody></table></div></figure>
+    </article>
+  </main>
+
+  <footer class="container site-footer">
+    <nav>
+      <ul><li><span class="kana">ワイフマーク</span> Waifmark 2 — local benchmark for small (V)LLMs.</li></ul>
+      <ul>
+        <li><a href="./index.html" id="footSuite" class="secondary">Suite docs</a></li>
+        <li><a href="leaderboard.json" class="secondary">leaderboard.json</a></li>
+      </ul>
+    </nav>
+  </footer>
 
 <script>
 async function jget(url){const r=await fetch(url);if(!r.ok)throw new Error(await r.text());return r.json();}
@@ -296,10 +218,11 @@ function updateFilterReadout(){
     return;
   }
   const sel=chart&&chart.$waifmarkFiltered;
-  el.textContent=(!sel||!sel.size)?'Showing all orgs · click pills to filter, click a point to isolate it':'Showing: '+[...sel].join(' + ')+' · click a lit pill to remove it';
+  el.textContent=(!sel||!sel.size)?'Showing all orgs · click chips to filter, click a point to isolate it':'Showing: '+[...sel].join(' + ')+' · click a lit chip to remove it';
 }
 let chart=null;
 let currentVersion='v1';
+let zoneMin=75;
 let v2Runs=[], v2Chart=[];
 const v1Data=[
   {model:"Qwen3.5 9B Q4",     org:"QWEN",score:86.00,time:9.717},
@@ -320,12 +243,13 @@ const v1Data=[
   {model:"RNJ-1 Q8",          org:"ESSE",score:37.00,time:6.363},
   {model:"Nemotron3nano Q8",  org:"NVDA",score:16.33,time:13.192}
 ];
-const orgMeta={QWEN:{color:'#F15CCA',label:'Qwen (Alibaba)'},GOOG:{color:'#6BCB77',label:'Google (Gemma)'},DPSK:{color:'#3B45FF',label:'DeepSeek'},MIST:{color:'#EC7A55',label:'Mistral'},GLM:{color:'#227DFF',label:'GLM (Zhipu)'},ESSE:{color:'#FECB33',label:'Essense (RNJ)'},NVDA:{color:'#83BF0D',label:'NVIDIA'},IBM:{color:'#9D4EDD',label:'IBM (Granite)'},LIQD:{color:'#2EC4B6',label:'Liquid (LFM)'},TII:{color:'#FF5964',label:'TII (Falcon)'},INCL:{color:'#4CC9F0',label:'InclusionAI (Ling)'},AI9S:{color:'#E0AAFF',label:'AI9Stars (G9V3)'},NBGE:{color:'#FFB3C1',label:'Nanbeige'},OBM:{color:'#F4F1DE',label:'OpenBMB (MiniCPM)'}};
+// Org hues unchanged in meaning; two yellows deepened so points stay legible on light.
+const orgMeta={QWEN:{color:'#D1349C',label:'Qwen (Alibaba)'},GOOG:{color:'#2E9E5B',label:'Google (Gemma)'},DPSK:{color:'#3B45FF',label:'DeepSeek'},MIST:{color:'#D9622B',label:'Mistral'},GLM:{color:'#227DFF',label:'GLM (Zhipu)'},ESSE:{color:'#B8860B',label:'Essense (RNJ)'},NVDA:{color:'#5E8F00',label:'NVIDIA'},IBM:{color:'#8E44AD',label:'IBM (Granite)'},LIQD:{color:'#0E9E93',label:'Liquid (LFM)'},TII:{color:'#E5484D',label:'TII (Falcon)'},INCL:{color:'#0B8EC4',label:'InclusionAI (Ling)'},AI9S:{color:'#9D4EDD',label:'AI9Stars (G9V3)'},NBGE:{color:'#E5488C',label:'Nanbeige'},OBM:{color:'#8A7B4D',label:'OpenBMB (MiniCPM)'}};
 // Expand #rgb -> #rrggbb so canvas color fns (addColorStop etc.) never get invalid strings
 function normHex(c){if(typeof c!=='string')return '#888888';if(/^#[0-9a-fA-F]{3}$/.test(c))return '#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return c;}
 // Selection state: org filter ($waifmarkFiltered, Set|null) and point picks
 // ($waifmarkPointSel, Set of "dsIdx:dataIdx"|null). Point picks take precedence;
-// org-pill clicks always return to org mode (clearing point picks).
+// org-chip clicks always return to org mode (clearing point picks).
 function ptKey(a,b){return a+':'+b;}
 function isPtOn(chart,ds,dsIdx,i){
   const ps=chart.$waifmarkPointSel;
@@ -336,6 +260,7 @@ function isPtOn(chart,ds,dsIdx,i){
 
 let animStart=0;
 let maxRank=0;
+const REDUCED=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function buildDatasets(raw){
   const sorted=[...raw].sort((a,b)=>a.score-b.score);
@@ -359,7 +284,7 @@ const appearPlugin={
   // Style computation lives here (NOT in a draw hook): Chart.js resolves element
   // styles during the dataset update phase, so values assigned any later only
   // take effect on the following frame (one-click lag). beforeDatasetsUpdate
-  // runs before resolution, keeping points/lines in sync with pills/labels.
+  // runs before resolution, keeping points/lines in sync with chips/labels.
   beforeDatasetsUpdate(chart){
     const elapsed=performance.now()-animStart;
     chart.data.datasets.forEach((ds,dsIdx)=>{
@@ -376,7 +301,7 @@ const appearPlugin={
           if(elapsed<rank*55){radii.push(0);bg.push('transparent');brd.push('transparent');bw.push(1);hov.push(6);}
           else{const t=Math.min(1,(elapsed-rank*55)/180);const e=1-Math.pow(1-t,3);
             if(!on){radii.push(3.5*e);bg.push(ds._origColor+'14');brd.push(ds._origColor+'14');bw.push(1);hov.push(6);}
-            else{radii.push(6*e);bg.push(ds._origColor+hexA(e*255));brd.push(ds._origColor+hexA(e*255));bw.push(emphasized?2:1);hov.push(emphasized?10:8);}}
+            else{radii.push(6*e);bg.push(ds._origColor+hexA(e*255));brd.push('#FFFFFF');bw.push(emphasized?2:1.5);hov.push(emphasized?10:8);}}
         });
         ds.pointRadius=radii;ds.pointBackgroundColor=bg;ds.pointBorderColor=brd;
         ds.pointBorderWidth=bw;ds.pointHoverRadius=hov;
@@ -384,7 +309,7 @@ const appearPlugin={
         const lineOn=!ptMode&&orgActive;
         const ranks=ds.data.map(d=>d.rank||0);const mn=Math.min(...ranks),mx=Math.max(...ranks);
         const t=Math.min(1,Math.max(0,(elapsed-mn*55)/((mx-mn)*55+180||1)));
-        const baseA=Math.round(t*(lineOn?136:20));
+        const baseA=Math.round(t*(lineOn?110:18));
         ds.borderColor=t>0?normHex(ds._origBorderColor.slice(0,7))+hexA(baseA):'transparent';
         ds.borderWidth=t>0?2:0;
       }
@@ -409,7 +334,7 @@ const appearPlugin={
           if(!isPtOn(chart,ds,dsIdx,i))return;
           if(!pt||typeof pt.x!=='number'||typeof pt.y!=='number')return;
           const g=hctx.createRadialGradient(pt.x,pt.y,2,pt.x,pt.y,20);
-          g.addColorStop(0,hcol+'66');g.addColorStop(1,hcol+'00');
+          g.addColorStop(0,hcol+'33');g.addColorStop(1,hcol+'00');
           hctx.fillStyle=g;hctx.beginPath();hctx.arc(pt.x,pt.y,20,0,Math.PI*2);hctx.fill();
         });
       });
@@ -423,16 +348,20 @@ const quadrantPlugin={
   beforeDatasetsDraw(chart){
     const{ctx,scales:{x,y}}=chart;
     if(!x||!y)return;
-    const xMin=(typeof currentVersion!=='undefined'&&currentVersion==='v2')?60:75;
+    const xMin=zoneMin;
     const xL=x.getPixelForValue(xMin),xR=x.getPixelForValue(100);
     const yT=y.getPixelForValue(10),yB=y.getPixelForValue(1);
     if(xL>=xR||yT>=yB)return;
     ctx.save();
-    ctx.fillStyle='rgba(107,203,119,0.05)';
-    ctx.strokeStyle='rgba(107,203,119,0.15)';
+    ctx.fillStyle='rgba(31,138,76,0.07)';
+    ctx.strokeStyle='rgba(31,138,76,0.45)';
     ctx.lineWidth=1;ctx.setLineDash([5,3]);
     roundedRect(ctx,xL,yT,xR-xL,yB-yT,8);
     ctx.fill();ctx.stroke();
+    ctx.fillStyle='rgba(31,138,76,0.85)';
+    ctx.font='700 11px "Zen Maru Gothic", sans-serif';
+    ctx.textAlign='right';ctx.textBaseline='bottom';
+    ctx.fillText('IDEAL ZONE',xR-8,yB-8);
     ctx.restore();
   }
 };
@@ -465,7 +394,7 @@ const labelPlugin={
     if(elapsed<85)return;
     const ctx=chart.ctx;
     ctx.save();
-    ctx.font='500 '+(window.innerWidth<700?11:13)+'px "Zen Maru Gothic",sans-serif';
+    ctx.font='700 '+(window.innerWidth<700?12:13)+'px "Zen Maru Gothic", sans-serif';
     const labels=[];
     const midY=(chart.chartArea.top+chart.chartArea.bottom)/2;
     chart.data.datasets.forEach((ds,dsIdx)=>{
@@ -478,7 +407,7 @@ const labelPlugin={
         const popAt=rank*55+600;
         if(elapsed<popAt)return;
         const tw=ctx.measureText(raw.modelName).width;
-        labels.push({text:raw.modelName,ptX:pt.x,ptY:pt.y,w:tw,h:12,rank,color:ds._origColor+'cc'});
+        labels.push({text:raw.modelName,ptX:pt.x,ptY:pt.y,w:tw,h:12,rank,color:'#5A4440'});
       });
     });
     if(!labels.length){ctx.restore();return;}
@@ -526,11 +455,6 @@ const labelPlugin={
       ctx.textAlign=l.align;
       ctx.textBaseline=l.baseline;
       ctx.fillText(l.text,l.ax,l.ay);
-      ctx.globalAlpha=opacity*0.35;
-      const grd=ctx.createRadialGradient(l.ptX,l.ptY,0,l.ptX,l.ptY,14);
-      const gcol=normHex(String(l.color).slice(0,7));
-      grd.addColorStop(0,gcol+'40');grd.addColorStop(1,gcol+'00');
-      ctx.fillStyle=grd;ctx.beginPath();ctx.arc(l.ptX,l.ptY,14,0,Math.PI*2);ctx.fill();
     });
     ctx.restore();
   }
@@ -553,7 +477,7 @@ function renderChart(raw){
   noData.style.display='none';
   const {datasets,groups}=buildDatasets(raw);
   maxRank=0;datasets.forEach(ds=>{if(!ds.label.startsWith('_line_'))ds.data.forEach(d=>{if(d.rank>maxRank)maxRank=d.rank;});});
-  animStart=performance.now();
+  animStart=REDUCED?performance.now()-1e9:performance.now();
   chart=new Chart(ctx,{
     type:'scatter',
     data:{datasets},
@@ -575,6 +499,9 @@ function renderChart(raw){
         if(shifted){
           if(ps.has(key))ps.delete(key);
           else ps.add(key);
+        }else if(ps.size===1&&ps.has(key)){
+          // Clicking the isolated point again clears the pick (show all).
+          ps=new Set();
         }else{
           ps=new Set([key]);
         }
@@ -587,18 +514,21 @@ function renderChart(raw){
       },
       layout:{padding:{top:14,right:narrow?56:100,bottom:10,left:10}},
       scales:{
-        x:{type:'linear',min:0,max:100,title:{display:true,text:'SCORE (%)',color:'#CF8AB8',font:{family:'Zen Maru Gothic',size:14,weight:'700'},padding:{top:12}},grid:{color:'rgba(207,138,184,0.07)'},border:{color:'rgba(207,138,184,0.15)'},ticks:{color:'rgba(207,138,184,0.6)',font:{family:'Zen Maru Gothic',size:13,weight:'500'},callback:v=>v+'%',stepSize:10}},
-        y:{type:'logarithmic',min:1,max:80,afterFit:axis=>{axis.width=62;},title:{display:true,text:'TIME / RESPONSE (s)',color:'#CF8AB8',font:{family:'Zen Maru Gothic',size:14,weight:'700'},padding:{bottom:18}},grid:{color:'rgba(207,138,184,0.07)'},border:{color:'rgba(207,138,184,0.15)'},afterBuildTicks:axis=>{const a=[1,2,5,10,20,40,80],b=[3,4,6,7,8,9,15,30,50,60,70];axis.ticks=[...new Set([...a,...b])].sort((x,y)=>x-y).map(v=>({value:v}))},ticks:{color:'rgba(207,138,184,0.6)',font:{family:'Zen Maru Gothic',size:13,weight:'500'},callback:function(v){return[1,2,5,10,20,40,80].includes(v)?v+'s':''}}}
+        x:{type:'linear',min:0,max:100,title:{display:true,text:'SCORE (%) →',color:'#6E5A56',font:{family:'Zen Maru Gothic',size:12,weight:'700'},padding:{top:10}},grid:{color:'#F5E4DC'},border:{color:'#EACFC4'},ticks:{color:'#6E5A56',font:{family:'Zen Maru Gothic',size:12},callback:v=>v+'%',stepSize:10}},
+        y:{type:'logarithmic',min:1,max:80,afterFit:axis=>{axis.width=58;},title:{display:true,text:'SEC / RESPONSE (LOG)',color:'#6E5A56',font:{family:'Zen Maru Gothic',size:12,weight:'700'},padding:{bottom:14}},grid:{color:'#F5E4DC'},border:{color:'#EACFC4'},afterBuildTicks:axis=>{const a=[1,2,5,10,20,40,80],b=[3,4,6,7,8,9,15,30,50,60,70];axis.ticks=[...new Set([...a,...b])].sort((x,y)=>x-y).map(v=>({value:v}))},ticks:{color:'#6E5A56',font:{family:'Zen Maru Gothic',size:12},callback:function(v){return[1,2,5,10,20,40,80].includes(v)?v+'s':''}}}
       },
-      plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(15,15,26,0.95)',borderColor:'rgba(207,138,184,0.3)',borderWidth:1,titleFont:{family:'Zen Maru Gothic',size:13,weight:'700'},bodyFont:{family:'Zen Maru Gothic',size:11},titleColor:'#F15CCA',bodyColor:'#CF8AB8',padding:14,cornerRadius:8,filter:item=>!item.dataset.label.startsWith('_line_'),callbacks:{title:items=>items[0].raw.modelName||'',label:item=>'Score: '+item.raw.x+'%  ·  Time: '+item.raw.y.toFixed(2)+'s'}}}
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(255,255,255,0.98)',borderColor:'#EACFC4',borderWidth:1,titleFont:{family:'Zen Maru Gothic',size:12,weight:'700'},bodyFont:{family:'Zen Maru Gothic',size:12},titleColor:'#231A21',bodyColor:'#4A3F49',padding:12,cornerRadius:8,boxPadding:4,filter:item=>!item.dataset.label.startsWith('_line_'),callbacks:{title:items=>items[0].raw.modelName||'',label:item=>'Score '+item.raw.x+'% · '+item.raw.y.toFixed(2)+'s'}}}
     },
     plugins:[quadrantPlugin,appearPlugin,labelPlugin]
   });
   const leg=document.getElementById('legend');leg.innerHTML='';chart.$waifmarkFiltered=null;chart.$waifmarkPointSel=null;
   Object.entries(orgMeta).forEach(([k,m])=>{
     if(!groups[k])return;
-    const div=document.createElement('div');div.className='legend-item';div.innerHTML='<span class="legend-dot" style="background:'+m.color+';color:'+m.color+'"></span>'+m.label;
+    const n=groups[k].length;
+    const div=document.createElement('div');div.className='legend-item';
+    div.innerHTML='<span class="legend-dot" style="background:'+m.color+'"></span><span>'+m.label+'</span><span class="legend-count">'+n+'</span>';
     div.dataset.org=k;
+    div.title=n+' model'+(n>1?'s':'')+' — click to filter';
     div.addEventListener('click',()=>{
       // Unlimited org toggle: click adds, click again removes (empty => show all).
       // Org clicks always return to org mode, clearing any point picks.
@@ -628,6 +558,7 @@ function renderChart(raw){
 let rafId=0;
 function scheduleLoop(){
   if(rafId)cancelAnimationFrame(rafId);
+  if(REDUCED){chart.update('none');rafId=0;return;}
   function tick(){
     const elapsed=performance.now()-animStart;
     const done=elapsed>=maxRank*55+900;
@@ -636,42 +567,151 @@ function scheduleLoop(){
   rafId=requestAnimationFrame(tick);
 }
 
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function orgChip(org){
+  const m=orgMeta[org]||{color:'#999',label:org};
+  return '<span class="org-chip"><i style="background:'+m.color+'"></i>'+esc(m.label)+'</span>';
+}
+function tableFilter(){
+  return {
+    q:(document.getElementById('lbSearch').value||'').trim().toLowerCase(),
+    sort:document.getElementById('lbSort').value||'overall'
+  };
+}
 function renderTableV1(){
+  const {q,sort}=tableFilter();
+  const thead=document.querySelector('#lbTable thead');
+  thead.innerHTML='<tr><th style="width:44px">#</th><th>Model</th><th>Org</th><th class="num">Overall</th><th class="num">Time</th></tr>';
   const tb=document.querySelector('#lbTable tbody');tb.innerHTML='';
-  document.querySelector('#lbTable thead').innerHTML='<tr><th>Model</th><th>Overall</th><th>Time</th><th>Org</th></tr>';
-  v1Data.slice().sort((a,b)=>b.score-a.score).forEach(r=>{
-    const tr=document.createElement('tr');tr.innerHTML='<td>'+r.model+'</td><td>'+r.score.toFixed(1)+'</td><td>'+r.time.toFixed(2)+'s</td><td>'+(orgMeta[r.org]?.label||r.org)+'</td>';tb.appendChild(tr);
+  let rows=v1Data.slice();
+  if(q)rows=rows.filter(r=>(r.model+' '+(orgMeta[r.org]?.label||r.org)).toLowerCase().includes(q));
+  rows.sort((a,b)=>sort==='time'?a.time-b.time:b.score-a.score);
+  document.getElementById('lbCount').textContent=rows.length+' of '+v1Data.length+' models';
+  rows.forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    if(i===0)tr.className='top1';else if(i===1)tr.className='top2';else if(i===2)tr.className='top3';
+    tr.innerHTML='<td><span class="rank-badge">'+(i+1)+'</span></td>'
+      +'<td class="model-cell">'+esc(r.model)+'</td>'
+      +'<td>'+orgChip(r.org)+'</td>'
+      +'<td class="num"><span class="score-cell"><span class="score-bar"><i style="width:'+Math.max(2,Math.min(100,r.score))+'%"></i></span>'+r.score.toFixed(1)+'</span></td>'
+      +'<td class="num">'+r.time.toFixed(2)+'s</td>';
+    tb.appendChild(tr);
   });
+  if(!rows.length)tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--pico-muted-color);padding:18px">No models match.</td></tr>';
+}
+function shortName(n){return String(n).split('/').slice(-2).join('/');}
+function paramsFromName(n){
+  const m=String(n).toUpperCase().match(/(\d+(?:\.\d+)?)B/);
+  return m?m[1]+'B':'—';
+}
+function timeByRun(runId){
+  const c=(typeof v2Chart!=='undefined'?v2Chart:[]).find(c=>c.run_id===runId)||{};
+  return (typeof c.time==='number'&&isFinite(c.time))?c.time.toFixed(2)+'s':'—';
 }
 function renderTableV2(){
-  document.querySelector('#lbTable thead').innerHTML='<tr><th>Model</th><th>Overall</th><th>Agentic</th><th>Roleplay</th><th>Date</th><th>#Tasks</th></tr>';
+  const {q,sort}=tableFilter();
+  const thead=document.querySelector('#lbTable thead');
+  thead.innerHTML='<tr><th style="width:44px">#</th><th>Model</th><th class="num">Overall</th><th class="num">Agentic</th><th class="num">Roleplay</th><th class="num">Params</th><th class="num">Time</th></tr>';
   const tb=document.querySelector('#lbTable tbody');tb.innerHTML='';
-  v2Runs.slice().sort((a,b)=>b.overall-a.overall).forEach(r=>{
-    const tr=document.createElement('tr');tr.innerHTML='<td>'+r.model_name.split('/').slice(-2).join('/')+'</td><td>'+r.overall.toFixed(1)+'</td><td>'+r.agentic.toFixed(1)+'</td><td>'+r.roleplay.toFixed(1)+'</td><td>'+new Date(r.date*1000).toLocaleDateString()+'</td><td>'+r.num_tasks+'</td>';tb.appendChild(tr);
+  let rows=v2Runs.slice();
+  if(q)rows=rows.filter(r=>(r.model_name||'').toLowerCase().includes(q));
+  const key=sort==='time'?null:sort;
+  rows.sort((a,b)=>{
+    if(sort==='time'){
+      const ta=(v2Chart.find(c=>c.run_id===a.run_id)||{}).time??1e9;
+      const tb2=(v2Chart.find(c=>c.run_id===b.run_id)||{}).time??1e9;
+      return ta-tb2;
+    }
+    return (b[key||'overall']??0)-(a[key||'overall']??0);
   });
+  document.getElementById('lbCount').textContent=rows.length+' of '+v2Runs.length+' models';
+  rows.forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    if(i===0)tr.className='top1';else if(i===1)tr.className='top2';else if(i===2)tr.className='top3';
+    const t=(v2Chart.find(c=>c.run_id===r.run_id)||{}).time;
+    tr.title=t?('Mean latency ' + t.toFixed(2) + 's/response'):'';
+    tr.innerHTML='<td><span class="rank-badge">'+(i+1)+'</span></td>'
+      +'<td class="model-cell">'+esc(shortName(r.model_name))+'</td>'
+      +'<td class="num"><span class="score-cell"><span class="score-bar"><i style="width:'+Math.max(2,Math.min(100,r.overall))+'%"></i></span>'+r.overall.toFixed(1)+'</span></td>'
+      +'<td class="num">'+r.agentic.toFixed(1)+'</td>'
+      +'<td class="num">'+r.roleplay.toFixed(1)+'</td>'
+      +'<td class="num">'+paramsFromName(r.model_name)+'</td>'
+      +'<td class="num">'+timeByRun(r.run_id)+'</td>';
+    tb.appendChild(tr);
+  });
+  if(!rows.length)tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--pico-muted-color);padding:18px">No models match.</td></tr>';
 }
+let LAST_BOARD=null;
+function med(ts){if(!ts||!ts.length)return null;const s=ts.slice().sort((a,b)=>a-b);return s[Math.floor(s.length/2)];}
+function updateKpis(){
+  try{
+    if(currentVersion==='v1'){
+      const rows=v1Data.slice().sort((a,b)=>b.score-a.score);
+      const best=rows[0];
+      document.getElementById('kpiBest').textContent=best.score.toFixed(1);
+      document.getElementById('kpiBestSub').textContent=best.model;
+      document.getElementById('kpiModels').textContent=String(rows.length);
+      document.getElementById('kpiOrgs').textContent=new Set(rows.map(r=>r.org)).size+' orgs · v1 archive';
+      const m=med(rows.map(r=>r.time));
+      if(m!=null)document.getElementById('kpiLatency').textContent=m.toFixed(1)+'s';
+      document.getElementById('kpiUpdated').textContent='archived';
+      document.getElementById('metaUpdated').textContent='v1 archive · '+rows.length+' models';
+      return;
+    }
+    const board=LAST_BOARD||{};
+    const runs=(board&&board.runs)||[];
+    const pts=(board&&board.chart)||[];
+    if(!runs.length){
+      document.getElementById('kpiBest').textContent='—';
+      document.getElementById('kpiModels').textContent='—';
+      return;
+    }
+    const best=runs.slice().sort((a,b)=>b.overall-a.overall)[0];
+    document.getElementById('kpiBest').textContent=best.overall.toFixed(1);
+    document.getElementById('kpiBestSub').textContent=shortName(best.model_name);
+    document.getElementById('kpiModels').textContent=String(runs.length);
+    document.getElementById('kpiOrgs').textContent=new Set(pts.map(p=>p.org)).size+' orgs · v2 archive';
+    const ts=pts.map(p=>p.time).filter(Number.isFinite).sort((a,b)=>a-b);
+    if(ts.length)document.getElementById('kpiLatency').textContent=ts[Math.floor(ts.length/2)].toFixed(1)+'s';
+    const gen=board.generated_at?new Date(board.generated_at):null;
+    const MON=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const upd=gen&&!isNaN(gen)?gen.getDate()+' '+MON[gen.getMonth()]+' '+gen.getFullYear():'—';
+    document.getElementById('kpiUpdated').textContent=upd;
+    document.getElementById('metaUpdated').textContent='updated '+upd+' · '+runs.length+' models';
+  }catch(e){console.error(e);}
+}
+// Static snapshot baked in at publish time so file:// opens work offline.
+// publish_pages.py replaces the null with the leaderboard.json payload.
+const EMBEDDED_BOARD={"generated_at": "2026-09-04T06:07:30.284904+00:00", "source": "waifmark 2 benchmark snapshot: 12 agentic + 4 roleplay tasks; score aggregates only", "runs": [{"run_id": "run_20260903T115651Z758038", "model_name": "Qwen3.5-9B-Q3", "overall": 88.91, "agentic": 94.54, "roleplay": 72.0, "num_tasks": 16, "date": 1788483778.2550318}, {"run_id": "run_20260903T113527Z714810", "model_name": "Gemma-4-12B-Q3", "overall": 80.41, "agentic": 87.04, "roleplay": 60.5, "num_tasks": 16, "date": 1788483778.276208}, {"run_id": "run_20260903T073336Z539853", "model_name": "Nanbeige4.2-3B-Q4", "overall": 75.5, "agentic": 90.0, "roleplay": 32.0, "num_tasks": 16, "date": 1788483558.4697793}, {"run_id": "run_20260903T075116Z938771", "model_name": "Granite-4.2-8B-Q4", "overall": 66.81, "agentic": 75.42, "roleplay": 41.0, "num_tasks": 16, "date": 1788484142.7100704}, {"run_id": "run_20260903T065101Z765157", "model_name": "LFM2.5-2.6B-Q4", "overall": 55.22, "agentic": 64.12, "roleplay": 28.5, "num_tasks": 16, "date": 1788483778.2734497}, {"run_id": "run_20260903T123456Z746831", "model_name": "mlx-community/Qwen3.5-4B-MLX-4bit", "overall": 49.41, "agentic": 48.54, "roleplay": 52.0, "num_tasks": 16, "date": 1788483778.261172}, {"run_id": "run_20260903T112719Z701421", "model_name": "mlx-community/gemma-4-E4B-it-4bit", "overall": 43.19, "agentic": 33.08, "roleplay": 73.5, "num_tasks": 16, "date": 1788483778.2667027}, {"run_id": "run_20260903T082510Z425608", "model_name": "Ling-3.0-Tiny-Q4", "overall": 34.53, "agentic": 37.04, "roleplay": 27.0, "num_tasks": 16, "date": 1788484122.795435}, {"run_id": "run_20260903T072438Z316960", "model_name": "G9V3-3B-Q4", "overall": 34.25, "agentic": 33.33, "roleplay": 37.0, "num_tasks": 16, "date": 1788483142.3072205}, {"run_id": "run_20260903T065949Z677416", "model_name": "Granite-4.2-3B-Q4", "overall": 31.84, "agentic": 27.04, "roleplay": 46.25, "num_tasks": 16, "date": 1788484239.7304764}, {"run_id": "run_20260904T000829Z900060", "model_name": "Gemma-4-E2B-Q4", "overall": 26.56, "agentic": 15.5, "roleplay": 59.75, "num_tasks": 16, "date": 1788483294.5708745}, {"run_id": "run_20260903T122317Z363672", "model_name": "mlx-community/Qwen3-4B-Instruct-2507-4bit", "overall": 21.0, "agentic": 15.17, "roleplay": 38.5, "num_tasks": 16, "date": 1788483778.2702973}, {"run_id": "run_20260903T101759Z822236", "model_name": "LFM2.5-8B-A1B-Q4", "overall": 15.62, "agentic": 7.5, "roleplay": 40.0, "num_tasks": 16, "date": 1788483558.4598544}, {"run_id": "run_20260903T083050Z431187", "model_name": "Falcon-H1R-7B-Q4", "overall": 9.06, "agentic": 2.92, "roleplay": 27.5, "num_tasks": 16, "date": 1788484097.3482907}, {"run_id": "run_20260903T124407Z170167", "model_name": "lmstudio-community/DeepSeek-R1-0528-Qwen3-8B-MLX-4bit", "overall": 7.43, "agentic": 0.08, "roleplay": 29.5, "num_tasks": 16, "date": 1788483492.971762}, {"run_id": "run_20260903T122824Z396334", "model_name": "mlx-community/Qwen3.5-2B-4bit", "overall": 5.5, "agentic": 2.92, "roleplay": 13.25, "num_tasks": 16, "date": 1788484035.0480351}, {"run_id": "run_20260903T064237Z857178", "model_name": "mlx-community/MiniCPM5-1B-4bit", "overall": 3.5, "agentic": 0.0, "roleplay": 14.0, "num_tasks": 16, "date": 1788484259.6737797}], "chart": [{"model": "G9V3 3B Q4", "org": "AI9S", "score": 34.25, "time": 4.039, "run_id": "run_20260903T072438Z316960"}, {"model": "Gemma 4 E2B Q4", "org": "GOOG", "score": 26.56, "time": 3.891, "run_id": "run_20260904T000829Z900060"}, {"model": "DeepSeek R1 0528 Qwen3 8B MLX 4bit", "org": "DPSK", "score": 7.43, "time": 33.188, "run_id": "run_20260903T124407Z170167"}, {"model": "LFM2.5 8B A1B Q4", "org": "LIQD", "score": 15.62, "time": 7.381, "run_id": "run_20260903T101759Z822236"}, {"model": "Nanbeige4.2 3B Q4", "org": "NBGE", "score": 75.5, "time": 14.081, "run_id": "run_20260903T073336Z539853"}, {"model": "Qwen3.5 9B Q3", "org": "QWEN", "score": 88.91, "time": 11.033, "run_id": "run_20260903T115651Z758038"}, {"model": "Qwen3.5 4B MLX 4bit", "org": "QWEN", "score": 49.41, "time": 6.187, "run_id": "run_20260903T123456Z746831"}, {"model": "gemma 4 E4B it 4bit", "org": "GOOG", "score": 43.19, "time": 6.17, "run_id": "run_20260903T112719Z701421"}, {"model": "Qwen3 4B Instruct 2507 4bit", "org": "QWEN", "score": 21.0, "time": 2.792, "run_id": "run_20260903T122317Z363672"}, {"model": "LFM2.5 2.6B Q4", "org": "LIQD", "score": 55.22, "time": 4.974, "run_id": "run_20260903T065101Z765157"}, {"model": "Gemma 4 12B Q3", "org": "GOOG", "score": 80.41, "time": 13.504, "run_id": "run_20260903T113527Z714810"}, {"model": "Qwen3.5 2B 4bit", "org": "QWEN", "score": 5.5, "time": 3.802, "run_id": "run_20260903T122824Z396334"}, {"model": "Falcon H1R 7B Q4", "org": "TII", "score": 9.06, "time": 56.661, "run_id": "run_20260903T083050Z431187"}, {"model": "Ling 3.0 Tiny Q4", "org": "INCL", "score": 34.53, "time": 3.18, "run_id": "run_20260903T082510Z425608"}, {"model": "Granite 4.2 8B Q4", "org": "IBM", "score": 66.81, "time": 18.986, "run_id": "run_20260903T075116Z938771"}, {"model": "Granite 4.2 3B Q4", "org": "IBM", "score": 31.84, "time": 13.079, "run_id": "run_20260903T065949Z677416"}, {"model": "MiniCPM5 1B 4bit", "org": "OBM", "score": 3.5, "time": 3.834, "run_id": "run_20260903T064237Z857178"}]};
 async function loadBoardData(){
-  // Live API first (local dev), static snapshot fallback (public static hosting —
-  // chart.html + leaderboard.json side by side, no backend required).
+  // Live API first (local dev), embedded snapshot, then sidecar file.
   try{ return await jget('/api/leaderboard'); }
-  catch(e){ return await jget('leaderboard.json'); }
+  catch(e){
+    if(EMBEDDED_BOARD&&EMBEDDED_BOARD.runs&&EMBEDDED_BOARD.runs.length) return EMBEDDED_BOARD;
+    return await jget('leaderboard.json');
+  }
 }
 async function loadLeaderboard(){
   try{
     const d=await loadBoardData();
     v2Runs=d.runs||[];v2Chart=d.chart||[];
+    LAST_BOARD=d;updateKpis();
     if(currentVersion==='v1'){renderChart(v1Data);renderTableV1();document.getElementById('versionNote').textContent='';}
-    else{renderChart(v2Chart.length?v2Chart:[]);renderTableV2();document.getElementById('versionNote').textContent=v2Chart.length?'':'Waifmark 2 scores land after grading + test bank revision.';}
+    else{renderChart(v2Chart.length?v2Chart:[]);renderTableV2();document.getElementById('versionNote').textContent=v2Chart.length?'':'Waifmark 2 scores land after grading.';}
   }catch(e){console.error(e);}
 }
 function setVersion(v){
   currentVersion=v;
+  updateKpis();
   document.querySelectorAll('#versionToggle button').forEach(btn=>btn.classList.toggle('active',btn.dataset.version===v));
   document.getElementById('chartTitle').textContent=v==='v1'?'Waifmark 1 for Small (V)LLMs':'Waifmark 2 for Small (V)LLMs';
+  zoneMin=(v==='v1')?75:60;
   if(v==='v1'){renderChart(v1Data);renderTableV1();document.getElementById('versionNote').textContent='';}
-  else{if(!v2Chart.length&&!v2Runs.length){document.getElementById('versionNote').textContent='Waifmark 2 scores land after grading + test bank revision.';renderChart([]);renderTableV2();}else{document.getElementById('versionNote').textContent='';renderChart(v2Chart);renderTableV2();}}
+  else{if(!v2Chart.length&&!v2Runs.length){document.getElementById('versionNote').textContent='Waifmark 2 scores land after grading.';renderChart([]);renderTableV2();}else{document.getElementById('versionNote').textContent='';renderChart(v2Chart);renderTableV2();}}
 }
 document.querySelectorAll('#versionToggle button').forEach(btn=>{btn.addEventListener('click',()=>setVersion(btn.dataset.version));});
+document.getElementById('lbSearch').addEventListener('input',()=>{currentVersion==='v1'?renderTableV1():renderTableV2();});
+document.getElementById('lbSort').addEventListener('change',()=>{currentVersion==='v1'?renderTableV1():renderTableV2();});
 document.getElementById('btnExportLb').addEventListener('click',async()=>{
   if(currentVersion==='v1'){
     let csv='Model,Overall,Time,Org\n';v1Data.forEach(r=>csv+='"'+r.model+'",'+r.score+','+r.time+','+r.org+'\n');
@@ -691,7 +731,9 @@ loadLeaderboard();
   const local=['localhost','127.0.0.1'].includes(location.hostname);
   const back=document.getElementById('backBtn');
   const docs=document.getElementById('docsLink');
+  const foot=document.getElementById('footSuite');
   if(back&&!local)back.setAttribute('href','./index.html');
+  if(foot&&!local)foot.setAttribute('href','./index.html');
   if(docs&&!local){
     docs.removeAttribute('target');
     docs.style.opacity='0.45';docs.style.cursor='not-allowed';
@@ -705,13 +747,13 @@ function showChartToast(msg){
   if(!el){
     el=document.createElement('div');
     el.id='chartToast';
-    el.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(12px);background:rgba(26,26,46,0.96);border:1px solid rgba(207,138,184,0.22);color:#e8e8f0;font-size:13px;font-weight:700;padding:9px 14px;border-radius:999px;box-shadow:0 8px 28px rgba(0,0,0,0.4);opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:99;white-space:nowrap;font-family:inherit';
+    el.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(8px);background:#231A21;color:#fff;font-size:12px;font-weight:700;padding:10px 16px;border-radius:8px;box-shadow:0 8px 24px rgba(35,26,33,0.25);opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:99;white-space:nowrap;font-family:"Zen Maru Gothic",sans-serif';
     document.body.appendChild(el);
   }
   el.textContent=msg;
   el.style.opacity='1';el.style.transform='translateX(-50%) translateY(0)';
   clearTimeout(chartToastTimer);
-  chartToastTimer=setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(-50%) translateY(12px)';},2400);
+  chartToastTimer=setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(-50%) translateY(8px)';},2400);
 }
 </script>
 </body>
