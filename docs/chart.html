@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waifmark 2 — Leaderboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap');
+  :root {
+    --bg: #0F0F1A;
+    --p1: #CF8AB8;
+    --p2: #D158B4;
+    --p3: #F15CCA;
+    --s1: #3A3231;
+    --s2: #3A3A3D;
+    --s3: #474C60;
+    --s4: rgba(71, 67, 114, 0.8);
+    --font: 'Zen Maru Gothic', 'Tsukimi Rounded', 'Rounded Mplus 1c', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: #e0e0e0;
+    font-family: var(--font);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .topbar {
+    width: 100%;
+    max-width: 1100px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .brand {
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    background: linear-gradient(90deg, var(--p1) 0%, var(--p2) 70%, var(--p3) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-size: 16px;
+  }
+  .brand small {
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(207, 138, 184, 0.5);
+    -webkit-text-fill-color: rgba(207, 138, 184, 0.5);
+    margin-left: 6px;
+    font-size: 9px;
+  }
+  .btn-back {
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #e0e0e0;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(207, 138, 184, 0.16);
+    border-radius: 999px;
+    padding: 7px 14px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+  .btn-back:hover { background: rgba(207,138,184,0.12); border-color: rgba(207,138,184,0.24); }
+  .chart-wrapper {
+    width: 100%;
+    max-width: 1100px;
+    position: relative;
+    border-radius: 10px;
+    padding: 30px 28px 20px;
+    border: 0px solid rgba(207, 138, 184, 0.15);
+    box-shadow:
+      0 0 80px rgba(209, 88, 180, 0.06),
+      0 4px 40px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .chart-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(160deg, rgba(207,138,184,0.25), rgba(241,92,202,0.05));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  .header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 4px;
+  }
+  .header-titles { min-width: 0; }
+  .header-titles h1 { font-variant-numeric: tabular-nums; }
+  h1 {
+    text-align: left;
+    font-family: var(--font);
+    font-size: 30px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    background: linear-gradient(90deg, var(--p1) 0%, var(--p2) 70%, var(--p3) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    text-align: left;
+    font-size: 15px;
+    font-weight: 500;
+    color: rgba(207, 138, 184, 0.45);
+    margin-bottom: 5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .version-toggle {
+    display: flex;
+    flex-shrink: 0;
+    padding: 3px;
+    border-radius: 22px;
+    background: rgba(58, 58, 61, 0.5);
+    border: 1px solid rgba(207, 138, 184, 0.18);
+  }
+  .version-toggle button {
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.55);
+    background: transparent;
+    border: none;
+    border-radius: 18px;
+    padding: 7px 16px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    user-select: none;
+  }
+  .version-toggle button.active {
+    background: linear-gradient(135deg, rgba(209,88,180,0.35), rgba(241,92,202,0.22));
+    color: #fff;
+    box-shadow: 0 0 14px rgba(209, 88, 180, 0.25);
+  }
+  .version-note {
+    text-align: center;
+    font-size: 11px;
+    color: rgba(207, 138, 184, 0.25);
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    transition: opacity 0.3s ease;
+    min-height: 14px;
+  }
+  .canvas-container {
+    position: relative;
+    width: 100%;
+    height: 38vh;
+    min-height: 260px;
+  }
+  .legend-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: flex-start;
+    gap: 18px;
+    margin-top: 5px;
+    margin-bottom: 8px;
+    padding-top: 14px;
+    border-top: 3px solid rgba(207, 138, 184, 0.1);
+    min-height: 78px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.55);
+    cursor: pointer;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+    user-select: none;
+  }
+  .legend-item:hover {
+    background: rgba(207, 138, 184, 0.08);
+    border-color: rgba(207, 138, 184, 0.15);
+  }
+  .legend-item.active {
+    background: rgba(207, 138, 184, 0.12);
+    border-color: rgba(207, 138, 184, 0.3);
+    color: rgba(255,255,255,0.85);
+  }
+  .legend-item.dimmed { opacity: 0.35; }
+  .legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 6px currentColor;
+    transition: all 0.3s ease;
+  }
+  .legend-item.dimmed .legend-dot { box-shadow: none; }
+  .table-wrap {
+    margin-top: 10px;
+    border: 1px solid rgba(207, 138, 184, 0.12);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.01);
+    overflow: auto;
+    max-height: 38vh;
+  }
+  table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+  th{font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:rgba(207,138,184,0.6);text-align:left;padding:8px 6px;border-bottom:1px solid rgba(207,138,184,0.12);position:sticky;top:0;background:var(--bg);z-index:1}
+  td{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:top}
+  tr:hover td{background:rgba(207,138,184,0.05)}
+  .export-row{display:flex;justify-content:flex-end;margin-top:8px}
+  .btn-export{
+    font-family:var(--font);font-size:12px;font-weight:700;
+    color:#e0e0e0;background:rgba(255,255,255,0.06);border:1px solid rgba(207,138,184,0.16);
+    border-radius:999px;padding:6px 12px;cursor:pointer;
+  }
+  .btn-export:hover{background:rgba(207,138,184,0.12)}
+  .no-data{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;pointer-events:none;z-index:2}
+  .no-data .big{font-size:15px;font-weight:700;color:rgba(207,138,184,0.4)}
+  .no-data .sub{font-size:11px;color:rgba(207,138,184,0.2)}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:rgba(207,138,184,0.2);border-radius:999px}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(207,138,184,0.35)}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="/" class="btn-back">← Back to Benchmarking Suite</a>
+    <div class="brand" style="margin-left:4px">Waifmark 2 <small>Leaderboard</small></div>
+    <div style="flex:1"></div>
+    <a href="/docs" target="_blank" style="font-size:11px;color:rgba(207,138,184,0.5);text-decoration:none">API docs</a>
+  </div>
+
+  <div class="chart-wrapper">
+    <div class="header-row">
+      <div class="header-titles">
+        <h1 id="chartTitle">Waifmark 1 for Small (V)LLMs</h1>
+        <div class="subtitle">Score vs Latency</div>
+      </div>
+      <div class="version-toggle" id="versionToggle">
+        <button data-version="v1" class="active">Waifmark 1</button>
+        <button data-version="v2">Waifmark 2</button>
+      </div>
+    </div>
+    <div class="version-note" id="versionNote"></div>
+    <div class="canvas-container">
+      <canvas id="benchChart"></canvas>
+      <div class="no-data" id="noDataOverlay"><span class="big">No data yet</span><span class="sub">Waifmark 2 scores land after grading.</span></div>
+    </div>
+    <div class="legend-container" id="legend"></div>
+    <div id="filterReadout" class="small muted" style="text-align:center;margin-top:2px;min-height:16px;font-size:11px;letter-spacing:0.04em"></div>
+    <div class="table-wrap"><table id="lbTable"><thead><tr><th>Model</th><th>Overall</th><th>Time</th><th>Org</th></tr></thead><tbody></tbody></table></div>
+    <div class="export-row"><button id="btnExportLb" class="btn-export">Export CSV</button></div>
+  </div>
+
+<script>
+async function jget(url){const r=await fetch(url);if(!r.ok)throw new Error(await r.text());return r.json();}
+function updateFilterReadout(){
+  const el=document.getElementById('filterReadout');
+  if(!el)return;
+  const ps=chart&&chart.$waifmarkPointSel;
+  if(ps&&ps.size){
+    const names=[];
+    ps.forEach(key=>{
+      const parts=String(key).split(':');
+      const ds=chart.data.datasets[+parts[0]];
+      const raw=ds&&ds.data[+parts[1]];
+      if(raw&&raw.modelName)names.push(raw.modelName);
+    });
+    const label=names.length>2?names.slice(0,2).join(' + ')+' +'+(names.length-2)+' more':names.join(' + ');
+    el.textContent='Showing point'+(names.length>1?'s':'')+': '+label+' · shift-click adds more, plain click picks one';
+    return;
+  }
+  const sel=chart&&chart.$waifmarkFiltered;
+  el.textContent=(!sel||!sel.size)?'Showing all orgs · click pills to filter, click a point to isolate it':'Showing: '+[...sel].join(' + ')+' · click a lit pill to remove it';
+}
+let chart=null;
+let currentVersion='v1';
+let v2Runs=[], v2Chart=[];
+const v1Data=[
+  {model:"Qwen3.5 9B Q4",     org:"QWEN",score:86.00,time:9.717},
+  {model:"Qwen3-2507 (I) Q4", org:"QWEN",score:74.00,time:2.485},
+  {model:"Qwen3-2507 (I) Q8", org:"QWEN",score:60.67,time:3.903},
+  {model:"Qwen3-vl-4b Q4",    org:"QWEN",score:42.00,time:2.102},
+  {model:"Qwen3-vl-8b Q4",    org:"QWEN",score:66.83,time:4.558},
+  {model:"Gemma3n (I) Q4",   org:"GOOG",score:46.17,time:3.290},
+  {model:"Gemma3n (I) Q8",   org:"GOOG",score:44.50,time:5.778},
+  {model:"Gemma4-e4b Q4",     org:"GOOG",score:54.50,time:14.076},
+  {model:"Gemma4-e4b Q8",     org:"GOOG",score:68.83,time:20.189},
+  {model:"Gemma4-e2b Q8",     org:"GOOG",score:53.83,time:13.612},
+  {model:"r1-0528qwen Q4",    org:"DPSK",score:38.33,time:57.988},
+  {model:"r1-0528qwen Q8",    org:"DPSK",score:60.33,time:41.420},
+  {model:"Ministral 3 14b Q4",org:"MIST",score:44.50,time:20.619},
+  {model:"4.6VFlash Q4",      org:"GLM", score:42.50,time:31.179},
+  {model:"RNJ-1 Q4",          org:"ESSE",score:36.00,time:5.071},
+  {model:"RNJ-1 Q8",          org:"ESSE",score:37.00,time:6.363},
+  {model:"Nemotron3nano Q8",  org:"NVDA",score:16.33,time:13.192}
+];
+const orgMeta={QWEN:{color:'#F15CCA',label:'Qwen (Alibaba)'},GOOG:{color:'#6BCB77',label:'Google (Gemma)'},DPSK:{color:'#3B45FF',label:'DeepSeek'},MIST:{color:'#EC7A55',label:'Mistral'},GLM:{color:'#227DFF',label:'GLM (Zhipu)'},ESSE:{color:'#FECB33',label:'Essense (RNJ)'},NVDA:{color:'#83BF0D',label:'NVIDIA'},IBM:{color:'#9D4EDD',label:'IBM (Granite)'},LIQD:{color:'#2EC4B6',label:'Liquid (LFM)'},TII:{color:'#FF5964',label:'TII (Falcon)'},INCL:{color:'#4CC9F0',label:'InclusionAI (Ling)'},AI9S:{color:'#E0AAFF',label:'AI9Stars (G9V3)'},NBGE:{color:'#FFB3C1',label:'Nanbeige'},OBM:{color:'#F4F1DE',label:'OpenBMB (MiniCPM)'}};
+// Expand #rgb -> #rrggbb so canvas color fns (addColorStop etc.) never get invalid strings
+function normHex(c){if(typeof c!=='string')return '#888888';if(/^#[0-9a-fA-F]{3}$/.test(c))return '#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return c;}
+// Selection state: org filter ($waifmarkFiltered, Set|null) and point picks
+// ($waifmarkPointSel, Set of "dsIdx:dataIdx"|null). Point picks take precedence;
+// org-pill clicks always return to org mode (clearing point picks).
+function ptKey(a,b){return a+':'+b;}
+function isPtOn(chart,ds,dsIdx,i){
+  const ps=chart.$waifmarkPointSel;
+  if(ps&&ps.size)return ps.has(ptKey(dsIdx,i));
+  const f=chart.$waifmarkFiltered;
+  return !f||f.has(ds._org);
+}
+
+let animStart=0;
+let maxRank=0;
+
+function buildDatasets(raw){
+  const sorted=[...raw].sort((a,b)=>a.score-b.score);
+  // Key ranks by object identity, not model name — repeat runs of one model
+  // must animate/label independently instead of stacking on one rank.
+  const rankMap=new Map(sorted.map((d,i)=>[d,i]));
+  const groups={};raw.forEach(d=>{(groups[d.org]=groups[d.org]||[]).push(d);});
+  Object.values(groups).forEach(a=>a.sort((x,y)=>x.score-y.score));
+  const datasets=[];
+  Object.entries(groups).forEach(([org,models])=>{
+    const meta=orgMeta[org]||{color:'#888888',label:org};
+    const baseCol=normHex(meta.color);
+    if(models.length>1) datasets.push({label:'_line_'+org,data:models.map(m=>({x:m.score,y:m.time,rank:rankMap.get(m)??0})),borderColor:'transparent',borderWidth:0,borderDash:[6,4],pointRadius:0,showLine:true,tension:0,order:2,_org:org,_origBorderColor:baseCol+'88'});
+    datasets.push({label:meta.label,data:models.map(m=>({x:m.score,y:m.time,modelName:m.model,rank:rankMap.get(m)??0})),backgroundColor:'transparent',borderColor:'transparent',pointRadius:0,pointHoverRadius:6,showLine:false,order:1,_org:org,_origColor:baseCol,_origBorderColor:baseCol+'44'});
+  });
+  return {datasets,groups,sorted};
+}
+
+const appearPlugin={
+  id:'appear',
+  // Style computation lives here (NOT in a draw hook): Chart.js resolves element
+  // styles during the dataset update phase, so values assigned any later only
+  // take effect on the following frame (one-click lag). beforeDatasetsUpdate
+  // runs before resolution, keeping points/lines in sync with pills/labels.
+  beforeDatasetsUpdate(chart){
+    const elapsed=performance.now()-animStart;
+    chart.data.datasets.forEach((ds,dsIdx)=>{
+      const filtered=chart.$waifmarkFiltered||null;
+      const ptSel=chart.$waifmarkPointSel||null;
+      const ptMode=!!(ptSel&&ptSel.size);
+      const orgActive=!filtered||filtered.has(ds._org);
+      if(!ds.label.startsWith('_line_')){
+        const radii=[],bg=[],brd=[],bw=[],hov=[];
+        const emphasized=ptMode||!!filtered;
+        ds.data.forEach((raw,i)=>{
+          const rank=raw.rank||0;
+          const on=ptMode?ptSel.has(ptKey(dsIdx,i)):orgActive;
+          if(elapsed<rank*55){radii.push(0);bg.push('transparent');brd.push('transparent');bw.push(1);hov.push(6);}
+          else{const t=Math.min(1,(elapsed-rank*55)/180);const e=1-Math.pow(1-t,3);
+            if(!on){radii.push(3.5*e);bg.push(ds._origColor+'14');brd.push(ds._origColor+'14');bw.push(1);hov.push(6);}
+            else{radii.push(6*e);bg.push(ds._origColor+hexA(e*255));brd.push(ds._origColor+hexA(e*255));bw.push(emphasized?2:1);hov.push(emphasized?10:8);}}
+        });
+        ds.pointRadius=radii;ds.pointBackgroundColor=bg;ds.pointBorderColor=brd;
+        ds.pointBorderWidth=bw;ds.pointHoverRadius=hov;
+      }else{
+        const lineOn=!ptMode&&orgActive;
+        const ranks=ds.data.map(d=>d.rank||0);const mn=Math.min(...ranks),mx=Math.max(...ranks);
+        const t=Math.min(1,Math.max(0,(elapsed-mn*55)/((mx-mn)*55+180||1)));
+        const baseA=Math.round(t*(lineOn?136:20));
+        ds.borderColor=t>0?normHex(ds._origBorderColor.slice(0,7))+hexA(baseA):'transparent';
+        ds.borderWidth=t>0?2:0;
+      }
+    });
+  },
+  beforeDatasetsDraw(chart){
+    const elapsed=performance.now()-animStart;
+    // Halo wash behind selected points (painted here so datasets draw over it).
+    // Makes the filtered selection unmistakable even at a glance.
+    const haloOrg=chart.$waifmarkFiltered||null;
+    const haloPt=chart.$waifmarkPointSel||null;
+    if((haloOrg&&haloOrg.size)||(haloPt&&haloPt.size)){
+      const hctx=chart.ctx;
+      hctx.save();
+      chart.data.datasets.forEach((ds,dsIdx)=>{
+        if(ds.label.startsWith('_line_'))return;
+        const hcol=normHex(ds._origColor||'#888888');
+        const hmeta=chart.getDatasetMeta(dsIdx);
+        (hmeta.data||[]).forEach((pt,i)=>{
+          const hr=(ds.data[i]&&ds.data[i].rank)||0;
+          if(hr*55>elapsed)return;
+          if(!isPtOn(chart,ds,dsIdx,i))return;
+          if(!pt||typeof pt.x!=='number'||typeof pt.y!=='number')return;
+          const g=hctx.createRadialGradient(pt.x,pt.y,2,pt.x,pt.y,20);
+          g.addColorStop(0,hcol+'66');g.addColorStop(1,hcol+'00');
+          hctx.fillStyle=g;hctx.beginPath();hctx.arc(pt.x,pt.y,20,0,Math.PI*2);hctx.fill();
+        });
+      });
+      hctx.restore();
+    }
+  }
+};
+
+const quadrantPlugin={
+  id:'quadrant',
+  beforeDatasetsDraw(chart){
+    const{ctx,scales:{x,y}}=chart;
+    if(!x||!y)return;
+    const xMin=(typeof currentVersion!=='undefined'&&currentVersion==='v2')?60:75;
+    const xL=x.getPixelForValue(xMin),xR=x.getPixelForValue(100);
+    const yT=y.getPixelForValue(10),yB=y.getPixelForValue(1);
+    if(xL>=xR||yT>=yB)return;
+    ctx.save();
+    ctx.fillStyle='rgba(107,203,119,0.05)';
+    ctx.strokeStyle='rgba(107,203,119,0.15)';
+    ctx.lineWidth=1;ctx.setLineDash([5,3]);
+    roundedRect(ctx,xL,yT,xR-xL,yB-yT,8);
+    ctx.fill();ctx.stroke();
+    ctx.restore();
+  }
+};
+
+function roundedRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+const CANDIDATES=[
+  {angle:0,align:'left',baseline:'middle',pref:0},
+  {angle:45,align:'left',baseline:'bottom',pref:1},
+  {angle:315,align:'left',baseline:'top',pref:1},
+  {angle:90,align:'center',baseline:'bottom',pref:2},
+  {angle:270,align:'center',baseline:'top',pref:2},
+  {angle:135,align:'right',baseline:'bottom',pref:3},
+  {angle:225,align:'right',baseline:'top',pref:3},
+  {angle:180,align:'right',baseline:'middle',pref:4},
+];
+const RADIUS=14,PAD=4,PREF_WT=150;
+
+const labelPlugin={
+  id:'pointLabels',
+  afterDatasetsDraw(chart){
+    const elapsed=performance.now()-animStart;
+    if(elapsed<85)return;
+    const ctx=chart.ctx;
+    ctx.save();
+    ctx.font='500 13px "Zen Maru Gothic",sans-serif';
+    const labels=[];
+    const midY=(chart.chartArea.top+chart.chartArea.bottom)/2;
+    chart.data.datasets.forEach((ds,dsIdx)=>{
+      if(ds.label.startsWith('_line_'))return;
+      const meta=chart.getDatasetMeta(dsIdx);
+      meta.data.forEach((pt,i)=>{
+        if(!isPtOn(chart,ds,dsIdx,i))return;
+        const raw=ds.data[i];
+        const rank=raw.rank||i;
+        const popAt=rank*55+600;
+        if(elapsed<popAt)return;
+        const tw=ctx.measureText(raw.modelName).width;
+        labels.push({text:raw.modelName,ptX:pt.x,ptY:pt.y,w:tw,h:12,rank,color:ds._origColor+'cc'});
+      });
+    });
+    if(!labels.length){ctx.restore();return;}
+    // Every data point is an obstacle, even ones that animate in later —
+    // otherwise early-placed labels end up underneath late-appearing points.
+    const obstacles=[];
+    chart.data.datasets.forEach((ds,dsIdx)=>{
+      if(ds.label.startsWith('_line_'))return;
+      const meta=chart.getDatasetMeta(dsIdx);
+      (meta.data||[]).forEach(pt=>{
+        if(pt&&typeof pt.x==='number'&&typeof pt.y==='number')obstacles.push({x:pt.x-8,y:pt.y-8,w:16,h:16});
+      });
+    });
+    const cacheKey=labels.length+'|'+(labels[0]?labels[0].ptX:'')+'|'+[...(chart.$waifmarkFiltered||[])].sort().join(',')+'|'+[...(chart.$waifmarkPointSel||[])].sort().join(',');
+    if(!chart.$labelCache||chart.$labelCacheKey!==cacheKey){
+      const placed=obstacles.slice();
+      labels.sort((a,b)=>a.rank-b.rank).forEach(label=>{
+        let best=Infinity,bestPos=null;
+        for(const c of CANDIDATES){
+          const rad=c.angle*Math.PI/180;
+          const ax=label.ptX+Math.cos(rad)*RADIUS;
+          const ay=label.ptY-Math.sin(rad)*RADIUS;
+          const bx=c.align==='left'?ax:c.align==='right'?ax-label.w:ax-label.w/2;
+          const by=c.baseline==='top'?ay:c.baseline==='bottom'?ay-label.h:ay-label.h/2;
+          let s=c.pref*PREF_WT;
+          for(const p of placed){
+            const ox=Math.min(bx+label.w,p.x+p.w)-Math.max(bx,p.x)+PAD;
+            const oy=Math.min(by+label.h,p.y+p.h)-Math.max(by,p.y)+PAD;
+            if(ox>0&&oy>0)s+=ox*oy*8;
+          }
+          if(s<best){best=s;bestPos={ax,ay,bx,by,align:c.align,baseline:c.baseline};}
+        }
+        label.ax=bestPos.ax;label.ay=bestPos.ay;label.x=bestPos.bx;label.y=bestPos.by;label.align=bestPos.align;label.baseline=bestPos.baseline;
+        placed.push({x:bestPos.bx,y:bestPos.by,w:label.w,h:label.h});
+      });
+      chart.$labelCache=labels;
+      chart.$labelCacheKey=cacheKey;
+    }
+    const cached=chart.$labelCache;
+    cached.forEach(l=>{
+      const opacity=Math.min(1,Math.max(0,(elapsed-l.rank*55-600)/180));
+      if(opacity<=0)return;
+      ctx.globalAlpha=opacity;
+      ctx.fillStyle=l.color;
+      ctx.textAlign=l.align;
+      ctx.textBaseline=l.baseline;
+      ctx.fillText(l.text,l.ax,l.ay);
+      ctx.globalAlpha=opacity*0.35;
+      const grd=ctx.createRadialGradient(l.ptX,l.ptY,0,l.ptX,l.ptY,14);
+      const gcol=normHex(String(l.color).slice(0,7));
+      grd.addColorStop(0,gcol+'40');grd.addColorStop(1,gcol+'00');
+      ctx.fillStyle=grd;ctx.beginPath();ctx.arc(l.ptX,l.ptY,14,0,Math.PI*2);ctx.fill();
+    });
+    ctx.restore();
+  }
+};
+
+function hexA(v){return Math.round(Math.min(255,Math.max(0,v))).toString(16).padStart(2,'0');}
+
+function renderChart(raw){
+  const ctx=document.getElementById('benchChart').getContext('2d');
+  if(chart){chart.destroy();chart=null;}
+  const noData=document.getElementById('noDataOverlay');
+  if(!raw||!raw.length){
+    noData.style.display='flex';
+    if(rafId)cancelAnimationFrame(rafId);rafId=0;
+    chart=new Chart(ctx,{type:'scatter',data:{datasets:[]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:0},layout:{padding:{top:14,right:100,bottom:10,left:10}},scales:{x:{type:'linear',min:0,max:100,display:false},y:{type:'logarithmic',min:1,max:80,display:false}},plugins:{legend:{display:false},tooltip:{enabled:false}}}});
+    const leg=document.getElementById('legend');leg.innerHTML='';
+    return;
+  }
+  noData.style.display='none';
+  const {datasets,groups}=buildDatasets(raw);
+  maxRank=0;datasets.forEach(ds=>{if(!ds.label.startsWith('_line_'))ds.data.forEach(d=>{if(d.rank>maxRank)maxRank=d.rank;});});
+  animStart=performance.now();
+  chart=new Chart(ctx,{
+    type:'scatter',
+    data:{datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      animation:{duration:0},
+      onClick:(evt,els,ch)=>{
+        if(!els||!els.length)return;
+        const c=ch||chart;
+        const hit=els.find(el=>!c.data.datasets[el.datasetIndex].label.startsWith('_line_'));
+        if(!hit)return;
+        const key=ptKey(hit.datasetIndex,hit.index);
+        const shifted=!!(evt&&evt.native&&evt.native.shiftKey);
+        // Plain click: isolate just this point (clears orgs + previous picks).
+        // Shift-click: add/remove this point (clears orgs, keeps other picks).
+        let ps=c.$waifmarkPointSel;
+        if(!(ps instanceof Set))ps=new Set();
+        else ps=new Set(ps);
+        if(shifted){
+          if(ps.has(key))ps.delete(key);
+          else ps.add(key);
+        }else{
+          ps=new Set([key]);
+        }
+        c.$waifmarkPointSel=ps.size?ps:null;
+        c.$waifmarkFiltered=null;
+        c.$labelCache=null;
+        document.querySelectorAll('.legend-item').forEach(el=>{el.classList.remove('active','dimmed');});
+        updateFilterReadout();
+        c.update('none');
+      },
+      layout:{padding:{top:14,right:100,bottom:10,left:10}},
+      scales:{
+        x:{type:'linear',min:0,max:100,title:{display:true,text:'SCORE (%)',color:'#CF8AB8',font:{family:'Zen Maru Gothic',size:14,weight:'700'},padding:{top:12}},grid:{color:'rgba(207,138,184,0.07)'},border:{color:'rgba(207,138,184,0.15)'},ticks:{color:'rgba(207,138,184,0.6)',font:{family:'Zen Maru Gothic',size:13,weight:'500'},callback:v=>v+'%',stepSize:10}},
+        y:{type:'logarithmic',min:1,max:80,afterFit:axis=>{axis.width=62;},title:{display:true,text:'TIME / RESPONSE (s)',color:'#CF8AB8',font:{family:'Zen Maru Gothic',size:14,weight:'700'},padding:{bottom:18}},grid:{color:'rgba(207,138,184,0.07)'},border:{color:'rgba(207,138,184,0.15)'},afterBuildTicks:axis=>{const a=[1,2,5,10,20,40,80],b=[3,4,6,7,8,9,15,30,50,60,70];axis.ticks=[...new Set([...a,...b])].sort((x,y)=>x-y).map(v=>({value:v}))},ticks:{color:'rgba(207,138,184,0.6)',font:{family:'Zen Maru Gothic',size:13,weight:'500'},callback:function(v){return[1,2,5,10,20,40,80].includes(v)?v+'s':''}}}
+      },
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(15,15,26,0.95)',borderColor:'rgba(207,138,184,0.3)',borderWidth:1,titleFont:{family:'Zen Maru Gothic',size:13,weight:'700'},bodyFont:{family:'Zen Maru Gothic',size:11},titleColor:'#F15CCA',bodyColor:'#CF8AB8',padding:14,cornerRadius:8,filter:item=>!item.dataset.label.startsWith('_line_'),callbacks:{title:items=>items[0].raw.modelName||'',label:item=>'Score: '+item.raw.x+'%  ·  Time: '+item.raw.y.toFixed(2)+'s'}}}
+    },
+    plugins:[quadrantPlugin,appearPlugin,labelPlugin]
+  });
+  const leg=document.getElementById('legend');leg.innerHTML='';chart.$waifmarkFiltered=null;chart.$waifmarkPointSel=null;
+  Object.entries(orgMeta).forEach(([k,m])=>{
+    if(!groups[k])return;
+    const div=document.createElement('div');div.className='legend-item';div.innerHTML='<span class="legend-dot" style="background:'+m.color+';color:'+m.color+'"></span>'+m.label;
+    div.dataset.org=k;
+    div.addEventListener('click',()=>{
+      // Unlimited org toggle: click adds, click again removes (empty => show all).
+      // Org clicks always return to org mode, clearing any point picks.
+      let sel=chart.$waifmarkFiltered;
+      if(!(sel instanceof Set))sel=new Set();
+      else sel=new Set(sel);
+      if(sel.has(k))sel.delete(k);
+      else sel.add(k);
+      chart.$waifmarkFiltered=sel.size?sel:null;
+      chart.$waifmarkPointSel=null;
+      chart.$labelCache=null;
+      const active=chart.$waifmarkFiltered;
+      document.querySelectorAll('.legend-item').forEach(el=>{
+        const on=active&&active.has(el.dataset.org);
+        el.classList.toggle('active',!!on);
+        el.classList.toggle('dimmed',!!active&&!on);
+      });
+      updateFilterReadout();
+      chart.update('none');
+    });
+    leg.appendChild(div);
+  });
+  updateFilterReadout();
+  scheduleLoop();
+}
+
+let rafId=0;
+function scheduleLoop(){
+  if(rafId)cancelAnimationFrame(rafId);
+  function tick(){
+    const elapsed=performance.now()-animStart;
+    const done=elapsed>=maxRank*55+900;
+    if(!done){chart.update('none');rafId=requestAnimationFrame(tick);}else{rafId=0;}
+  }
+  rafId=requestAnimationFrame(tick);
+}
+
+function renderTableV1(){
+  const tb=document.querySelector('#lbTable tbody');tb.innerHTML='';
+  document.querySelector('#lbTable thead').innerHTML='<tr><th>Model</th><th>Overall</th><th>Time</th><th>Org</th></tr>';
+  v1Data.slice().sort((a,b)=>b.score-a.score).forEach(r=>{
+    const tr=document.createElement('tr');tr.innerHTML='<td>'+r.model+'</td><td>'+r.score.toFixed(1)+'</td><td>'+r.time.toFixed(2)+'s</td><td>'+(orgMeta[r.org]?.label||r.org)+'</td>';tb.appendChild(tr);
+  });
+}
+function renderTableV2(){
+  document.querySelector('#lbTable thead').innerHTML='<tr><th>Model</th><th>Overall</th><th>Agentic</th><th>Roleplay</th><th>Date</th><th>#Tasks</th></tr>';
+  const tb=document.querySelector('#lbTable tbody');tb.innerHTML='';
+  v2Runs.slice().sort((a,b)=>b.overall-a.overall).forEach(r=>{
+    const tr=document.createElement('tr');tr.innerHTML='<td>'+r.model_name.split('/').slice(-2).join('/')+'</td><td>'+r.overall.toFixed(1)+'</td><td>'+r.agentic.toFixed(1)+'</td><td>'+r.roleplay.toFixed(1)+'</td><td>'+new Date(r.date*1000).toLocaleDateString()+'</td><td>'+r.num_tasks+'</td>';tb.appendChild(tr);
+  });
+}
+async function loadBoardData(){
+  // Live API first (local dev), static snapshot fallback (public static hosting —
+  // chart.html + leaderboard.json side by side, no backend required).
+  try{ return await jget('/api/leaderboard'); }
+  catch(e){ return await jget('leaderboard.json'); }
+}
+async function loadLeaderboard(){
+  try{
+    const d=await loadBoardData();
+    v2Runs=d.runs||[];v2Chart=d.chart||[];
+    if(currentVersion==='v1'){renderChart(v1Data);renderTableV1();document.getElementById('versionNote').textContent='';}
+    else{renderChart(v2Chart.length?v2Chart:[]);renderTableV2();document.getElementById('versionNote').textContent=v2Chart.length?'':'Waifmark 2 scores land after grading + test bank revision.';}
+  }catch(e){console.error(e);}
+}
+function setVersion(v){
+  currentVersion=v;
+  document.querySelectorAll('#versionToggle button').forEach(btn=>btn.classList.toggle('active',btn.dataset.version===v));
+  document.getElementById('chartTitle').textContent=v==='v1'?'Waifmark 1 for Small (V)LLMs':'Waifmark 2 for Small (V)LLMs';
+  if(v==='v1'){renderChart(v1Data);renderTableV1();document.getElementById('versionNote').textContent='';}
+  else{if(!v2Chart.length&&!v2Runs.length){document.getElementById('versionNote').textContent='Waifmark 2 scores land after grading + test bank revision.';renderChart([]);renderTableV2();}else{document.getElementById('versionNote').textContent='';renderChart(v2Chart);renderTableV2();}}
+}
+document.querySelectorAll('#versionToggle button').forEach(btn=>{btn.addEventListener('click',()=>setVersion(btn.dataset.version));});
+document.getElementById('btnExportLb').addEventListener('click',async()=>{
+  if(currentVersion==='v1'){
+    let csv='Model,Overall,Time,Org\n';v1Data.forEach(r=>csv+='"'+r.model+'",'+r.score+','+r.time+','+r.org+'\n');
+    const b=new Blob([csv],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='waifmark1_leaderboard.csv';a.click();URL.revokeObjectURL(u);
+  }else{
+    let rows=v2Runs&&v2Runs.length?v2Runs:[];
+    if(!rows.length){ try{ rows=(await loadBoardData()).runs||[]; }catch(e){ console.error(e); return; } }
+    let csv='Model,Overall,Agentic,Roleplay,Date,Tasks\n';rows.forEach(r=>csv+='"'+r.model_name+'",'+r.overall+','+r.agentic+','+r.roleplay+','+new Date(r.date*1000).toISOString()+','+r.num_tasks+'\n');
+    const b=new Blob([csv],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='waifmark_leaderboard.csv';a.click();URL.revokeObjectURL(u);
+  }
+});
+loadLeaderboard();
+</script>
+</body>
+</html>
