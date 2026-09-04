@@ -40,9 +40,9 @@
     <h1>Waifmark 2 Benchmarking Suite</h1>
     <p>Local agentic + roleplay/persona benchmark for small (V)LLMs.</p>
     <div class="cta">
-      <a href="http://127.0.0.1:8001" class="btn btn-primary">Open Control Center →</a>
-      <a href="http://127.0.0.1:8001/chart" class="btn btn-secondary">View Leaderboard</a>
-      <a href="http://127.0.0.1:8001/docs" class="btn btn-secondary">API Docs</a>
+      <a href="http://127.0.0.1:8001" id="ccBtn" class="btn btn-primary">Open Control Center →</a>
+      <a href="http://127.0.0.1:8001/chart" id="lbBtn" class="btn btn-secondary">View Leaderboard</a>
+      <a href="http://127.0.0.1:8001/docs" id="docsBtn" class="btn btn-secondary">API Docs</a>
     </div>
     <div style="margin-top:10px;font-size:11px;color:var(--muted)">By default, <span class="badge">waifmark</span> boots at 127.0.0.1:8001.</div>
   </div>
@@ -123,7 +123,34 @@ pytest  # 56 passed
 python -c "from fastapi.testclient import TestClient; from api.app import app; print(TestClient(app).get('/api/health').json())"</pre>
   </div>
 
-  <div style="text-align:center;padding:14px;color:var(--muted);font-size:11px;letter-spacing:0.06em;text-transform:uppercase">Waifmark 2 • <a href="http://127.0.0.1:8001">Control Center</a> • <a href="http://127.0.0.1:8001/chart">Leaderboard</a></div>
+  <div style="text-align:center;padding:14px;color:var(--muted);font-size:11px;letter-spacing:0.06em;text-transform:uppercase">Waifmark 2 • <a href="http://127.0.0.1:8001" id="fCc">Control Center</a> • <a href="http://127.0.0.1:8001/chart" id="fLb">Leaderboard</a></div>
 </div>
+<script>
+(function(){
+  const host=location.hostname||'';
+  const local=!host||host==='localhost'||host==='127.0.0.1';
+  const pubHost=!local;
+  function showIdxToast(msg){
+    let el=document.getElementById('idxToast');
+    if(!el){el=document.createElement('div');el.id='idxToast';el.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(12px);background:rgba(26,26,46,0.96);border:1px solid rgba(207,138,184,0.22);color:#e8e8f0;font-size:13px;font-weight:700;padding:9px 14px;border-radius:999px;box-shadow:0 8px 28px rgba(0,0,0,0.4);opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:99;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis';document.body.appendChild(el);}
+    el.textContent=msg;el.style.opacity='1';el.style.transform='translateX(-50%) translateY(0)';
+    clearTimeout(window.__idxToastT);window.__idxToastT=setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(-50%) translateY(12px)';},2800);
+  }
+  function block(el){
+    if(!el)return;
+    el.style.opacity='0.45';el.style.cursor='not-allowed';
+    el.title='Requires the local server';
+    el.addEventListener('click',e=>{e.preventDefault();showIdxToast('Launch the server first — run: python -m api.run (then open 127.0.0.1:8001)');});
+  }
+  // Leaderboard works everywhere: API route when served by the backend,
+  // static file otherwise (public site or local file open).
+  const lb=document.getElementById('lbBtn'), flb=document.getElementById('fLb');
+  const lbHref=(host==='localhost'||host==='127.0.0.1')?'http://127.0.0.1:8001/chart':'./chart.html';
+  if(lb)lb.setAttribute('href',lbHref);
+  if(flb)flb.setAttribute('href',lbHref);
+  // Control Center + API docs need the backend: block them on public hosts.
+  if(pubHost)['ccBtn','docsBtn','fCc'].forEach(id=>block(document.getElementById(id)));
+})();
+</script>
 </body>
 </html>
