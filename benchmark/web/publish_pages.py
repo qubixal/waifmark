@@ -2,7 +2,9 @@
 """Publish the public Waifmark leaderboard snapshot for GitHub Pages.
 
 Reads local run_*.json files (gitignored, never committed) and writes ONLY
-score aggregates to docs/leaderboard.json, alongside docs/chart.html.
+score aggregates to leaderboard.json at the repo root, alongside chart.html
+(GitHub Pages serves the repo root, so the public URL is
+<user>.github.io/waifmark/chart.html).
 
 Nothing containing transcripts, model responses, judge rationales, workspace
 files, or test-bank content is ever written. The key allowlists below are
@@ -10,7 +12,7 @@ enforced with an assertion.
 
 Usage:
     python benchmark/web/publish_pages.py
-    # then commit docs/ and push; enable Pages: Settings -> Pages -> main /docs
+    # then commit and push (Pages serves the repo root)
 """
 import datetime
 import glob
@@ -22,7 +24,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]  # repo root (waifmark/)
 RESULTS = ROOT / "benchmark" / "data" / "results"
-DOCS = ROOT / "docs"
+DOCS = ROOT  # Pages serves the repo root: chart.html + leaderboard.json live here
 
 
 def org(name: str) -> str:
@@ -112,7 +114,7 @@ def main() -> None:
     (DOCS / "leaderboard.json").write_text(json.dumps(out, indent=2, ensure_ascii=False))
     # Keep the published page in sync with the app page (same file, static-safe).
     (DOCS / "chart.html").write_text((ROOT / "benchmark" / "web" / "chart.html").read_text())
-    print(f"published {len(runs)} runs, {len(chart)} chart points -> docs/")
+    print(f"published {len(runs)} runs, {len(chart)} chart points -> repo root")
 
 
 if __name__ == "__main__":
