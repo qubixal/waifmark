@@ -139,25 +139,25 @@
     <article>
       <header style="display:flex;align-items:center;gap:10px"><h2 style="margin:0;font-size:1.05rem;font-weight:900">Run it</h2><a href="https://github.com/qubixal/waifmark/archive/refs/heads/main.zip" role="button" style="width:auto;margin:0 0 0 auto">↓ Download benchmark suite</a></header>
       <ol class="steps">
-        <li><div><strong>Download</strong><span>Grab the suite as a .zip from GitHub (button above).</span></div></li>
-        <li><div><strong>Unzip</strong><span>Anywhere you like, then open a terminal inside <code>benchmark/</code>.</span></div></li>
-        <li><div><strong>Run</strong><span>Paste the commands below — Python 3.10+, API keys go in <code>.env</code>.</span></div></li>
-        <li><div><strong>Open</strong><span>Control Center at <code>127.0.0.1:8001</code> to run models, Leaderboard for scores.</span></div></li>
+        <li><div><strong>Download</strong><span>Grab Waifmark as a .zip (or press button above!)</span></div></li>
+        <li><div><strong>Unzip</strong><span> then open a terminal inside <code>benchmark/</code>.</span></div></li>
+        <li><div><strong>Run</strong><span>Paste the commands below, and put your API keys in <code>.env</code>.</span></div></li>
+        <li><div><strong>Open</strong><span>the Control Center at <code>127.0.0.1:8001</code> to run the vllm/llama.cpp server, model and benchmark.</span></div></li>
       </ol>
       <div class="term"><div class="term-head"><span class="dot"></span>TERMINAL<b1. utton data-copy="boot" class="secondary">Copy</button></div><pre id="code-boot">cd benchmark
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env  # add OPENROUTER_API_KEY / HF_TOKEN
 waifmark              # ← boots at http://127.0.0.1:8001</pre></div>
-      <footer style="padding-bottom:16px"><small style="color:var(--pico-muted-color)">Full docs are available in the repo. Python 3.10+ recommended.</small></footer>
+      <footer style="padding-bottom:16px"><small style="color:var(--pico-muted-color)">Full docs are available in the repo. Python 3.10+ is recommended for use.</small></footer>
     </article>
 
     <article>
       <header><h2 style="margin:0;font-size:1.05rem;font-weight:900">GitHub</h2></header>
       <ul class="repo-list">
-        <li><a href="https://github.com/qubixal/waifmark">qubixal/waifmark</a><small>Code, scoring methodology, project layout.</small></li>
-        <li><a href="https://github.com/qubixal/waifmark/issues">Issues</a><small>Bug reports and model requests.</small></li>
-        <li><a href="leaderboard.json">leaderboard.json</a><small>Raw published scores.</small></li>
+        <li><a href="https://github.com/qubixal/waifmark">qubixal/waifmark</a><small>Code, scoring methodology, raw project code</small></li>
+        <li><a href="https://github.com/qubixal/waifmark/issues">Issues</a><small>Bug reports and model requests</small></li>
+        <li><a href="leaderboard.json">leaderboard.json</a><small>Raw published scores (see View Leaderboard for actual leaderboard)</small></li>
       </ul>
     </article>
   </main>
