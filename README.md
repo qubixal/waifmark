@@ -1,6 +1,6 @@
-# WAIFMARK© 2 Benchmarking Suite
+# WAIFMARK© 2 <small>Benchmarking Suite</small>
 
-A benchmark testing **local agentic** and **roleplay/persona** capabilities of small (V)LLMs.
+Waifmark 2 is a benchmark testing **local agentic** and **roleplay/persona** capabilities of small (V)LLMs.
 
 - **Agentic**: short-context toolcalling, strict JSON action output, file fetching/searching, calculations, lookup tables, safe shell usage, code error correction.
 - **Persona**: multi-turn conversational context tracking, maintaining personality, safety traps, 中/Eng expression.
@@ -9,59 +9,55 @@ Max score is 100.00. Roleplay responses are scored by an LLM-as-a-judge (v2) wit
 
 > The exact test bank is **proprietary** and is not part of this release. The tool ships with a dummy `data/test_bank.example.json` so it runs out of the box; drop your own `data/test_bank.json` in to benchmark.
 
-## Install & Boot (one command)
+## Install & Boot
 
-Python 3.10+ recommended.
+Python 3.10+ is recommended for installation.
 
 ```bash
 cd benchmark
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt        # installs waifmark + FastAPI app
-cp .env.example .env  # add OPENROUTER_API_KEY / HF_TOKEN if you have them
-waifmark              # ← boots FastAPI app at http://127.0.0.1:8001
-# open http://127.0.0.1:8001  +  http://127.0.0.1:8001/docs  +  http://127.0.0.1:8001/chart
+pip install -r requirements.txt        # install reqs
+cp .env.example .env                   # add OPENROUTER_API_KEY / HF_TOKEN api keys
+waifmark                               # ← boots Frontend app at http://127.0.0.1:8001
 ```
 
-To end:
+To shut down:
 ```bash
-waifmark --stop        # or: python run.py --stop  /  python -m api.run --stop
-# shell: kill $(lsof -ti :8001)  # or: pkill -f "uvicorn api.app:app"
+waifmark --stop
 ```
 
-Alternatives:
-```bash
-python -m api.run --host 127.0.0.1 --port 8001   # same as waifmark
-python run.py                                   # top-level helper (auto-creates .env, checks deps)
-uvicorn api.app:app --host 127.0.0.1 --port 8001 --reload  # dev
-```
+The run and terminate commands have been simplified to "waifmark" for convience.
 
-Single-page app covers Model Search (10/page, 40/60 split), Benchmark (capped live log), Audit (segmented), Config (expandable), Leaderboard on `/chart`. Benchmark runs as subprocess writing `data/results/.benchmark_state.json`; the API polls that file.
-
-### Env for API keys (auto-created on boot if missing)
+### Env for API keys
 
 ```bash
 cp .env.example .env
-# OPENROUTER_API_KEY=sk-or-…
-# HF_TOKEN=hf_…
+# then either nano into the file or open in a editor to enter your
+# OPENROUTER_API_KEY=sk-or-…, HF_TOKEN=hf_…
 ```
 
-### Headless CLI
+### Headless CLI (No frontend)
 
+If for example you would like to run consecutive benchmarks, or don't want to use the frontend UI:
 ```bash
 python main.py --config config.yaml --test-bank data/test_bank.json
 ```
 
-`--mode pipeline` additionally starts/stops the serving backend (vLLM or llama.cpp for GGUF) around the run.
+use `--mode pipeline` to start/stop the backend (vLLM, llama.cpp) serving the model.
 
-Before benchmarking, set `model` in `config.yaml` under `judges` to the judge model you want (e.g. `openrouter/deepseek-v3.1`), and point `model_under_test` at your model or GGUF file. Small models are sensitive to chat templates — if scores look unusually bad, verify your vLLM `--chat-template` and `config.yaml` `chat_template` settings.
+### Scoring Judge
+Before you benchmark, the judge needs to be set. You can get an api key from [Openrouter](https://openrouter.ai), then set `model` in `config.yaml` under `judges` to the judge model you want (e.g. `openrouter/free`), and point `model_under_test` at your model or GGUF file.
+
+> Note: Small models are sometimes sensitive to chat templates. If your benchmark scores look unusually bad, verify your vLLM `--chat-template` and `config.yaml` `chat_template`.
 
 ## Scoring (v2)
 
-This is a **breaking change from v1** — v2 scores are not directly comparable to v1 runs.
+**v2 changed a lot of things from v1**, and therefore are not directly comparable.
 
-### Agentic (deterministic)
+### Part 1 (1/3): Agentic
 
-Each step's tool call is validated against the task's tool list. Three components, weighted in `config.yaml`:
+Involves working in a sandbox; each step's tool call is checked against the task's tool list.
+There are three score components, weighed in `config.yaml`:
 
 ```
 score_100 = 100 × ( tool_syntax_accuracy × 0.3
@@ -69,19 +65,22 @@ score_100 = 100 × ( tool_syntax_accuracy × 0.3
                   + error_recovery         × 0.2 )
 ```
 
-- `tool_syntax_accuracy` — fraction of steps whose action JSON was valid.
-- `goal_completion` — blends final-answer hit rate (70%, configurable via `agentic.final_completion_weight`) with required-tool usage (30%).
-- `error_recovery` — a failed step counts as recovered only when the next step succeeds and retries the *same* action.
+- `tool_syntax_accuracy` — the percentage of toolcalls whose action JSON was valid
+- `goal_completion` — a score derived from the final-answer hit rate (70%, configurable via `agentic.final_completion_weight`) and required-tool usage (30%).
+- `error_recovery` — if a toolcall fails and is ran again and then succeeds, it is counted as a recovered error.
 
-### Roleplay (LLM-as-judge v2)
+### Part 2 (2/3): Roleplay
 
-Each transcript is scored 0–100 by the configured judge(s) against the persona rubric (`character_consistency`, `instruction_following`, `trap_resistance`, `conversational_quality`). The v2 judge uses a calibrated, anchor-rich prompt with explicit Aura v2 persona, hard caps for `[DELETE]` / boilerplate, confidence-weighted aggregation, and a deterministic heuristic fallback when all judges fail. The triage engine flags responses for human review on judge disagreement, boilerplate phrases, **low confidence (<0.55)**, delete-marker flags, heuristic fallback, judge errors, and a seeded random spotcheck.
+Each transcript is scored 0–100 by the configured judge(s) against the persona rubric:
+
+`character_consistency`, `instruction_following`, `trap_resistance`, `conversational_quality`.
+
+Responses may be flagged for human review on judge disagreement, boilerplate phrases, **low confidence (<0.55)**, delete-marker flags, heuristic fallback, judge errors, or a seeded random spotcheck.
 
 ## Security notes
 
-- The agentic sandbox is a **benchmark harness, not a security boundary**. Tasks run on your machine, and the model-under-test can invoke allowed shell commands (including `python3` by default). Set `agentic.allow_python3_tool: false` for untrusted test banks.
-- Serving backends are spawned without a shell (argv-based) and via process groups (`start_new_session=True`) so `killpg` cleans workers. FastAPI binds `127.0.0.1` by default and enables CORS for the frontend.
-- API keys live in `.env`, which is gitignored. Never commit `.env` or `data/test_bank.json`.
+- The agentic sandbox is a **benchmark harness** and **not a security boundary**. Tasks run locally on your machine, and the model-under-test can invoke allowed shell commands.
+This includes `python3` by default, so set `agentic.allow_python3_tool: false` if you don't trust it.
 
 ## Project layout
 
@@ -95,12 +94,4 @@ benchmark/
   tests/         pytest suite (no network needed)
   config.yaml    run configuration (committed; no secrets)
   run.py         one-command boot helper
-```
-
-## Tests
-
-```bash
-pip install -e ".[dev]"
-pytest
-# API smoke: python -c "from fastapi.testclient import TestClient; from api.app import app; print(TestClient(app).get('/api/health').json())"
 ```
