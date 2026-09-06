@@ -1,23 +1,55 @@
-# WAIFMARK© 2 <small>Benchmarking Suite</small>
+<div align="center">
 
-Waifmark 2 is a benchmark testing **local agentic** and **roleplay/persona** capabilities of small (V)LLMs.
+# WAIFMARK 2 <small>Benchmarking Suite</small>
 
-- **Agentic**: short-context toolcalling, strict JSON action output, file fetching/searching, calculations, lookup tables, safe shell usage, code error correction.
-- **Persona**: multi-turn conversational context tracking, maintaining personality, safety traps, 中/Eng expression.
+![Banner](/readme_media/banner.png)
 
-Max score is 100.00. Roleplay responses are scored by an LLM-as-a-judge (v2) with a triage stage that routes low-confidence verdicts to human auditing.
+![PyPI Python Version](https://img.shields.io/pypi/pyversions/waifmark)
 
-> The exact test bank is **proprietary** and is not part of this release. The tool ships with a dummy `data/test_bank.example.json` so it runs out of the box; drop your own `data/test_bank.json` in to benchmark.
+A benchmark that tests the **local agentic** and **roleplay (persona)** capabilities of small (V)LLMs.
+</div>
+
+As Waifmark benchmarks _small, locally-hosted models_, cost is not a major concern. Instead, Waifmark 2's scores are evaluated from 0.00 to 100.00 against time per response (total toks ouput / avg. tok/s).
+Waifmark has now been updated to **v2**! A lot of things have been changed from **v1**, and so their scores are not directly comparable (see Leaderboard).
+
+## Why v2?
+
+- 4x the question bank compared to v1
+- Full automated benchmarking process (that launches vllm/llama.cpp server, serves the local model and benchmarks it in the same control center)
+- Ability to test models consecutively, saving setup time
+- LLM judge that auto-scores tasks, saving review time. Low confidence evals will still be flagged for a human to audit.
+
+v2 consists of two main types of questions:
+- **Agentic** (i.e. short-context toolcalling, strict formatted JSON output, lookup tables, safe shell cmds, code correction)
+- **Persona** (i.e. multi-turn conversational context, personality persistance, safety, 中/EN vocabulary and expression)
+
+> Note: Waifmark's exact test bank is **proprietary** and is therefore not released for public. 
 
 ## Install & Boot
 
-Python 3.10+ is recommended for installation.
+### 1: Recommended
+
+Download the latest `waifmark-macos.zip` from [Releases](https://github.com/ldpleo/waifmark/releases), unzip, and run:
+
+```bash
+./waifmark/waifmark              # launches frontend at http://127.0.0.1:8001
+./waifmark/waifmark --stop       # shut down
+```
+
+### 2: pip install (Python 3.10+ required)
+
+```bash
+pip install waifmark
+waifmark                         # launches frontend at http://127.0.0.1:8001
+waifmark --stop                  # shut down
+```
+
+### 3: From source
 
 ```bash
 cd benchmark
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt        # install reqs
-cp .env.example .env                   # add OPENROUTER_API_KEY / HF_TOKEN api keys
 waifmark                               # ← boots Frontend app at http://127.0.0.1:8001
 ```
 
@@ -26,38 +58,39 @@ To shut down:
 waifmark --stop
 ```
 
-The run and terminate commands have been simplified to "waifmark" for convience.
-
 ### Env for API keys
 
 ```bash
 cp .env.example .env
-# then either nano into the file or open in a editor to enter your
+# then, nano into the file or open a code editor to enter your
 # OPENROUTER_API_KEY=sk-or-…, HF_TOKEN=hf_…
 ```
 
 ### Headless CLI (No frontend)
 
 If for example you would like to run consecutive benchmarks, or don't want to use the frontend UI:
+
 ```bash
 python main.py --config config.yaml --test-bank data/test_bank.json
 ```
 
-use `--mode pipeline` to start/stop the backend (vLLM, llama.cpp) serving the model.
+Then use `--mode pipeline` to start/stop the backend (vLLM, llama.cpp) that's serving the model.
 
 ### Scoring Judge
-Before you benchmark, the judge needs to be set. You can get an api key from [Openrouter](https://openrouter.ai), then set `model` in `config.yaml` under `judges` to the judge model you want (e.g. `openrouter/free`), and point `model_under_test` at your model or GGUF file.
 
-> Note: Small models are sometimes sensitive to chat templates. If your benchmark scores look unusually bad, verify your vLLM `--chat-template` and `config.yaml` `chat_template`.
+To speed up the scoring process, you would need to set a judge.
+
+By default, this is done through Openrouter, which offers generous free limits:
+1. get an api key from [Openrouter](https://openrouter.ai)
+2. set `model` in `config.yaml` under `judges` to the judge model you want (e.g. `openrouter/free`)
+3. point `model_under_test` at your model or GGUF file.
 
 ## Scoring (v2)
 
-**v2 changed a lot of things from v1**, and therefore are not directly comparable.
+### Agentic (1/3 of test bank)
 
-### Part 1 (1/3): Agentic
-
-Involves working in a sandbox; each step's tool call is checked against the task's tool list.
-There are three score components, weighed in `config.yaml`:
+Waifmark first puts the model in a sandbox to perform agentic tasks, recording and checking each step's tool call.
+There are three components that make up the final score:
 
 ```
 score_100 = 100 × ( tool_syntax_accuracy × 0.3
@@ -65,24 +98,26 @@ score_100 = 100 × ( tool_syntax_accuracy × 0.3
                   + error_recovery         × 0.2 )
 ```
 
-- `tool_syntax_accuracy` — the percentage of toolcalls whose action JSON was valid
-- `goal_completion` — a score derived from the final-answer hit rate (70%, configurable via `agentic.final_completion_weight`) and required-tool usage (30%).
-- `error_recovery` — if a toolcall fails and is ran again and then succeeds, it is counted as a recovered error.
+- `tool_syntax_accuracy` — the percentage of toolcalls whose JSON was valid
+- `goal_completion` — a score derived from the final-answer hit rate (70%) and required-tool usage (30%).
+- `error_recovery` — a corrected toolcall after the previous one failed.
 
-### Part 2 (2/3): Roleplay
+> Note: Small models are sometimes sensitive to chat templates. If your benchmark scores look unusually bad, check your vLLM `--chat-template` and `config.yaml` `chat_template`.
 
-Each transcript is scored 0–100 by the configured judge(s) against the persona rubric:
+### Roleplay (2/3 of test bank)
+
+Then, the model is evaluated based on 4 components:
 
 `character_consistency`, `instruction_following`, `trap_resistance`, `conversational_quality`.
 
-Responses may be flagged for human review on judge disagreement, boilerplate phrases, **low confidence (<0.55)**, delete-marker flags, heuristic fallback, judge errors, or a seeded random spotcheck.
+To determine the final Roleplay score. Responses may be flagged for human review on judge disagreement, **low confidence (<0.55)**, judge errors, etc.
 
-## Security notes
+## Security Note
 
 - The agentic sandbox is a **benchmark harness** and **not a security boundary**. Tasks run locally on your machine, and the model-under-test can invoke allowed shell commands.
 This includes `python3` by default, so set `agentic.allow_python3_tool: false` if you don't trust it.
 
-## Project layout
+## Project layout (summarised with AI):
 
 ```
 benchmark/
@@ -94,4 +129,6 @@ benchmark/
   tests/         pytest suite (no network needed)
   config.yaml    run configuration (committed; no secrets)
   run.py         one-command boot helper
+  make_dist.py   build wheel + executable
+  waifmark.spec  PyInstaller config for standalone build
 ```
