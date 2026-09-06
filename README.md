@@ -10,6 +10,7 @@ A benchmark that tests the **local agentic** and **roleplay (persona)** capabili
 </div>
 
 As Waifmark benchmarks _small, locally-hosted models_, cost is not a major concern. Instead, Waifmark 2's scores are evaluated from 0.00 to 100.00 against time per response (total toks ouput / avg. tok/s).
+
 Waifmark has now been updated to **v2**! A lot of things have been changed from **v1**, and so their scores are not directly comparable (see Leaderboard).
 
 ## Why v2?
